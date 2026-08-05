@@ -29,13 +29,25 @@
   .brand .mark{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border:1.5px solid var(--rust);border-radius:50%;color:var(--rust);font-size:16px}
   .brand b{font-family:"Oswald";font-weight:700;text-transform:uppercase;font-size:1.05rem;letter-spacing:.03em}
   .brand span{color:var(--rust)}
-  nav ul{list-style:none;display:flex;gap:28px;align-items:center}
+  nav{display:flex;align-items:center;gap:22px}
+  .navlinks{list-style:none;display:flex;gap:28px;align-items:center}
   nav a,nav button.linkish{font-family:"IBM Plex Mono",monospace;font-size:.78rem;letter-spacing:.05em;color:var(--steel);transition:color .2s;background:none;border:none;cursor:pointer}
   nav a:hover,nav button.linkish:hover{color:var(--foam)}
-  .cart-btn{border:1px solid var(--line);border-radius:2px;padding:7px 13px;font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--foam);cursor:pointer;background:transparent;transition:border-color .2s}
+  .cart-btn{border:1px solid var(--line);border-radius:2px;padding:7px 13px;font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--foam);cursor:pointer;background:transparent;transition:border-color .2s,background .2s;display:inline-flex;align-items:center;gap:6px}
+  .cart-btn .cart-ico{font-size:.95rem;line-height:1}
+  .cart-btn.has-items{background:var(--rust);border-color:var(--rust)}
+  .cart-btn.has-items b{color:var(--foam)}
+  .cart-btn{flex:0 0 auto}
   .cart-btn:hover{border-color:var(--foam)}
   .cart-btn b{color:var(--buoy)}
-  .burger{display:none;background:none;border:1px solid var(--line);color:var(--foam);width:40px;height:36px;border-radius:2px;font-size:1.1rem;cursor:pointer}
+  .burger{display:none}
+  /* sticky mobile cart bar */
+  .cartbar{position:fixed;left:0;right:0;bottom:0;z-index:120;display:none;align-items:center;justify-content:space-between;gap:12px;width:100%;border:none;cursor:pointer;background:var(--rust);color:var(--foam);font-family:"Oswald",sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:1.02rem;padding:16px 20px;padding-bottom:calc(16px + env(safe-area-inset-bottom));transform:translateY(130%);transition:transform .32s cubic-bezier(.2,.9,.3,1.2);box-shadow:0 -8px 30px rgba(0,0,0,.45)}
+  .cartbar.show{transform:translateY(0)}
+  .cartbar .cb-n{background:var(--foam);color:var(--rust);border-radius:100px;padding:1px 10px;margin-right:5px;font-weight:700}
+  .cartbar .cb-r{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:.84rem;letter-spacing:.02em;display:flex;align-items:center;gap:4px}
+  .cartbar.bump{animation:cbbump .45s ease}
+  @keyframes cbbump{0%{transform:translateY(0) scale(1)}35%{transform:translateY(0) scale(1.035)}100%{transform:translateY(0) scale(1)}}
 
   /* hero */
   .hero{position:relative;padding:92px 0 76px;overflow:hidden}
@@ -192,8 +204,12 @@
   .receipt .foot{font-size:.68rem;color:var(--steel);text-align:center;padding:6px 26px 4px;line-height:1.7}
 
   @media(max-width:900px){
-    nav ul{display:none}
-    .burger{display:block}
+    .navlinks{display:none}
+    .cartbar{display:flex}
+    body.has-cart{padding-bottom:76px}
+    .bw-lead{display:none}
+    .brand b{font-size:.95rem}
+    .bar{gap:12px}
     .hero-grid{grid-template-columns:1fr}
     .rig{display:none}
     .grid{grid-template-columns:repeat(2,1fr)}
@@ -212,16 +228,15 @@
 
 <header>
   <div class="wrap bar">
-    <div class="brand"><span class="mark">&#9875;</span><b>Single&#8209;Use&nbsp;<span>Boat&nbsp;Anchors</span></b></div>
+    <div class="brand"><span class="mark">&#9875;</span><b><span class="bw-lead">Single&#8209;Use&nbsp;</span><span>Boat&nbsp;Anchors</span></b></div>
     <nav>
-      <ul>
+      <ul class="navlinks">
         <li><a href="#browse">Browse anchors</a></li>
         <li><button class="linkish" onclick="openForm()">Sell heavy junk</button></li>
         <li><a href="#how">How it works</a></li>
-        <li><button class="cart-btn" onclick="openCart()">Hold &nbsp;<b id="count">0</b></button></li>
       </ul>
+      <button class="cart-btn" id="cartTop" onclick="openCart()"><span class="cart-ico">&#128722;</span> Hold&nbsp;<b id="count">0</b></button>
     </nav>
-    <button class="burger" aria-label="Menu" onclick="openCart()">&#9776;</button>
   </div>
 </header>
 
@@ -343,6 +358,11 @@
   <div id="receiptBody"></div>
 </div>
 
+<button class="cartbar" id="cartbar" onclick="openCart()" aria-label="View your hold and buy">
+  <span class="cb-l"><span class="cb-n" id="cbCount">0</span> in your hold</span>
+  <span class="cb-r">$<span id="cbTotal">0</span> &middot; View &amp; buy &rarr;</span>
+</button>
+
 <div id="toast"></div>
 
 <script>
@@ -431,11 +451,19 @@
     const id = card.dataset.id;
     if(cart.find(c=>c.id===id)){ toast('Already in your <b>hold</b>. There\'s only one of each.'); return; }
     cart.push({id, title:card.dataset.title, price:+card.dataset.price, weight:+card.dataset.weight, loc:card.dataset.loc});
-    updateBadge(); renderCart();
+    updateBadge(); renderCart(); bumpBar();
     toast('Added <b>'+esc(card.dataset.title)+'</b> to your hold.');
   }
   function removeItem(id){ cart = cart.filter(c=>c.id!==id); updateBadge(); renderCart(); }
-  function updateBadge(){ $('count').textContent = cart.length; }
+  function updateBadge(){
+    const n = cart.length, total = cart.reduce((s,c)=>s+c.price,0);
+    $('count').textContent = n;
+    const top = $('cartTop'); if(top) top.classList.toggle('has-items', n>0);
+    const bar = $('cartbar');
+    if(bar){ $('cbCount').textContent = n; $('cbTotal').textContent = total; bar.classList.toggle('show', n>0); }
+    document.body.classList.toggle('has-cart', n>0);
+  }
+  function bumpBar(){ const bar=$('cartbar'); if(bar && bar.classList.contains('show')){ bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump'); } }
 
   function renderCart(){
     const body = $('cartBody');
