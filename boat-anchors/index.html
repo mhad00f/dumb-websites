@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Single-Use Boat Anchors — Anchor once. Cut the line.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep:#08191f; --hull:#0f2a34; --hull-2:#143842;
+    --steel:#7c8e97; --foam:#e9e4d8;
+    --rust:#c24a22; --rust-lo:#8f3517; --buoy:#e7b93e;
+    --line:rgba(233,228,216,.12); --line-2:rgba(233,228,216,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--deep);color:var(--foam);font-family:"Work Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:.72rem;letter-spacing:.28em;text-transform:uppercase;color:var(--buoy)}
+  h1,h2,h3,.disp{font-family:"Oswald",sans-serif;font-weight:600;text-transform:uppercase;line-height:.98;letter-spacing:.01em}
+
+  /* top bar */
+  header{position:sticky;top:0;z-index:50;background:rgba(8,25,31,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:66px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .mark{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;border:1.5px solid var(--rust);border-radius:50%;color:var(--rust);font-size:16px}
+  .brand b{font-family:"Oswald";font-weight:700;text-transform:uppercase;font-size:1.05rem;letter-spacing:.03em}
+  .brand span{color:var(--rust)}
+  nav ul{list-style:none;display:flex;gap:28px;align-items:center}
+  nav a,nav button.linkish{font-family:"IBM Plex Mono",monospace;font-size:.78rem;letter-spacing:.05em;color:var(--steel);transition:color .2s;background:none;border:none;cursor:pointer}
+  nav a:hover,nav button.linkish:hover{color:var(--foam)}
+  .cart-btn{border:1px solid var(--line);border-radius:2px;padding:7px 13px;font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--foam);cursor:pointer;background:transparent;transition:border-color .2s}
+  .cart-btn:hover{border-color:var(--foam)}
+  .cart-btn b{color:var(--buoy)}
+  .burger{display:none;background:none;border:1px solid var(--line);color:var(--foam);width:40px;height:36px;border-radius:2px;font-size:1.1rem;cursor:pointer}
+
+  /* hero */
+  .hero{position:relative;padding:92px 0 76px;overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1.35fr .9fr;gap:48px;align-items:center}
+  .hero h1{font-size:clamp(2.9rem,7vw,5.4rem);font-weight:700;margin:16px 0 20px}
+  .hero h1 em{font-style:normal;color:var(--rust)}
+  .hero p.lede{font-size:1.14rem;color:#c9c3b6;max-width:34ch;margin-bottom:32px}
+  .btns{display:flex;gap:14px;flex-wrap:wrap}
+  .btn{font-family:"Oswald";font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:.95rem;padding:14px 24px;border-radius:2px;cursor:pointer;border:1px solid transparent;transition:transform .12s ease,background .2s,color .2s}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--rust);color:var(--foam)}
+  .btn-primary:hover{background:var(--rust-lo)}
+  .btn-ghost{background:transparent;color:var(--foam);border-color:var(--line)}
+  .btn-ghost:hover{border-color:var(--foam)}
+  .trust{display:flex;gap:22px;flex-wrap:wrap;margin-top:30px;font-family:"IBM Plex Mono",monospace;font-size:.74rem;color:var(--steel)}
+  .trust span{display:flex;align-items:center;gap:7px}
+  .rig{position:relative;height:340px}
+  .rig .cleat{position:absolute;top:0;left:50%;transform:translateX(-50%);width:64px;height:14px;background:var(--steel);border-radius:7px;opacity:.55}
+  .rig .rope{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:0;border-left:2px dashed var(--buoy);height:200px;animation:drop 2.4s ease-out both}
+  @keyframes drop{from{height:0}to{height:200px}}
+  .rig .weight{position:absolute;top:190px;left:50%;transform:translateX(-50%);width:200px;text-align:center;background:var(--hull);border:1px solid var(--rust);border-radius:3px;padding:22px 16px 18px;box-shadow:0 24px 50px rgba(0,0,0,.5);animation:settle 2.4s ease-out both}
+  @keyframes settle{0%{transform:translate(-50%,-190px);opacity:0}55%{opacity:1}100%{transform:translate(-50%,0)}}
+  .rig .weight .n{font-family:"Oswald";font-weight:700;font-size:3rem;color:var(--rust);line-height:1}
+  .rig .weight .l{font-family:"IBM Plex Mono";font-size:.68rem;letter-spacing:.22em;color:var(--steel);text-transform:uppercase;margin-top:6px}
+  .rig .weight .cut{margin-top:14px;font-family:"IBM Plex Mono";font-size:.68rem;color:var(--buoy);letter-spacing:.1em}
+  .seabed{position:absolute;left:0;right:0;bottom:0;height:60px;background:linear-gradient(transparent,rgba(124,142,151,.09));border-top:1px dashed var(--line)}
+
+  section.block{padding:74px 0;border-top:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:40px;flex-wrap:wrap}
+  .sec-head h2{font-size:clamp(1.8rem,4vw,2.7rem);font-weight:600}
+  .sec-head .note{font-family:"IBM Plex Mono";font-size:.78rem;color:var(--steel);max-width:38ch;text-align:right}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--line-2)}
+  .step{background:var(--deep);padding:30px 26px 34px}
+  .step .num{font-family:"Oswald";font-weight:700;font-size:2.4rem;color:var(--rust);line-height:1}
+  .step h3{font-size:1.15rem;margin:14px 0 8px;font-weight:600}
+  .step p{color:#b7b2a6;font-size:.94rem}
+
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:34px;align-items:center}
+  .chip{font-family:"IBM Plex Mono";font-size:.74rem;letter-spacing:.04em;padding:7px 15px;border:1px solid var(--line);border-radius:100px;color:var(--steel);cursor:pointer;background:transparent;transition:all .18s;text-transform:lowercase}
+  .chip:hover{color:var(--foam);border-color:var(--foam)}
+  .chip.on{background:var(--rust);color:var(--foam);border-color:var(--rust)}
+  .chip.add{margin-left:auto;border-color:var(--buoy);color:var(--buoy);text-transform:none}
+  .chip.add:hover{background:var(--buoy);color:var(--deep)}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+  .card{background:var(--hull);border:1px solid var(--line);border-radius:4px;display:flex;flex-direction:column;overflow:hidden;position:relative;transition:transform .18s ease,border-color .18s}
+  .card:hover{transform:translateY(-5px);border-color:rgba(233,228,216,.28)}
+  .card .stamp{position:absolute;top:12px;right:12px;z-index:2;font-family:"IBM Plex Mono";font-size:.56rem;letter-spacing:.14em;text-transform:uppercase;color:var(--buoy);border:1px solid var(--buoy);border-radius:2px;padding:4px 7px;transform:rotate(4deg);opacity:.9}
+  .weight-plate{background:repeating-linear-gradient(45deg,rgba(194,74,34,.05) 0 10px,transparent 10px 20px),var(--hull-2);padding:26px 20px 20px;text-align:center;border-bottom:1px solid var(--line)}
+  .weight-plate .n{font-family:"Oswald";font-weight:700;font-size:2.9rem;color:var(--rust);line-height:.9}
+  .weight-plate .n small{font-size:1.1rem;font-weight:500;color:var(--foam);margin-left:2px}
+  .weight-plate .l{font-family:"IBM Plex Mono";font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--steel);margin-top:9px}
+  .card-body{padding:18px 18px 20px;display:flex;flex-direction:column;flex:1}
+  .card-body h3{font-size:1.08rem;font-weight:600;line-height:1.06;margin-bottom:9px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:15px;min-height:1px}
+  .tag{font-family:"IBM Plex Mono";font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);border:1px solid var(--line);border-radius:2px;padding:2px 6px}
+  .specs{font-family:"IBM Plex Mono";font-size:.74rem;color:#b7b2a6;border-top:1px solid var(--line-2);padding-top:12px;margin-top:auto}
+  .specs div{display:flex;justify-content:space-between;gap:14px;padding:3px 0;align-items:flex-start}
+  .specs span:first-child{color:var(--steel);white-space:nowrap}
+  .specs span:last-child{text-align:right}
+  .price-row{display:flex;align-items:baseline;justify-content:space-between;margin:16px 0 14px}
+  .price-row .p{font-family:"Oswald";font-weight:700;font-size:1.7rem}
+  .price-row .p small{font-size:.7rem;color:var(--steel);font-weight:400;font-family:"IBM Plex Mono";margin-left:4px}
+  .claim{width:100%;background:transparent;border:1px solid var(--rust);color:var(--foam);font-family:"Oswald";font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:.86rem;padding:11px;border-radius:2px;cursor:pointer;transition:all .18s}
+  .claim:hover{background:var(--rust)}
+  .claim:disabled{opacity:.5;cursor:not-allowed;border-color:var(--line)}
+  .claim:disabled:hover{background:transparent}
+  /* sold state */
+  .card.sold{opacity:.85}
+  .card.sold .sold-band{position:absolute;top:52px;left:-42px;transform:rotate(-18deg);background:var(--rust);color:var(--foam);font-family:"Oswald";font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:.8rem;padding:6px 54px;z-index:3;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+  .sold-band{display:none}
+
+  .sell{background:repeating-linear-gradient(45deg,rgba(231,185,62,.05) 0 14px,transparent 14px 28px),var(--hull);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .sell .wrap{display:grid;grid-template-columns:1.3fr .9fr;gap:40px;align-items:center;padding:64px 24px}
+  .sell h2{font-size:clamp(1.9rem,4vw,3rem);font-weight:600;margin-bottom:16px}
+  .sell p{color:#c9c3b6;max-width:46ch}
+  .sell .side{text-align:right}
+  .sell .side .big{font-family:"Oswald";font-weight:700;font-size:4.2rem;color:var(--buoy);line-height:.9}
+  .sell .side .cap{font-family:"IBM Plex Mono";font-size:.72rem;color:var(--steel);letter-spacing:.08em}
+
+  footer{padding:56px 0 44px;color:var(--steel)}
+  .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:36px;margin-bottom:36px}
+  footer h4{font-family:"Oswald";font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:.9rem;color:var(--foam);margin-bottom:14px}
+  footer ul{list-style:none}
+  footer li{font-size:.86rem;padding:4px 0}
+  footer li a{color:var(--steel);transition:color .18s;cursor:pointer}
+  footer li a:hover{color:var(--foam)}
+  .disclaim{font-family:"IBM Plex Mono";font-size:.7rem;line-height:1.7;color:#5f6f77;border-top:1px solid var(--line);padding-top:24px}
+
+  /* toast */
+  #toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,140%);background:var(--hull-2);border:1px solid var(--rust);color:var(--foam);font-family:"IBM Plex Mono";font-size:.82rem;padding:14px 20px;border-radius:3px;box-shadow:0 16px 40px rgba(0,0,0,.5);z-index:300;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);max-width:90vw;text-align:center}
+  #toast.show{transform:translate(-50%,0)}
+  #toast b{color:var(--buoy)}
+
+  /* overlay + panels */
+  .overlay{position:fixed;inset:0;background:rgba(4,12,16,.66);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s;z-index:150}
+  .overlay.show{opacity:1;pointer-events:auto}
+
+  /* cart drawer */
+  .drawer{position:fixed;top:0;right:0;height:100%;width:420px;max-width:92vw;background:var(--deep);border-left:1px solid var(--line);z-index:200;transform:translateX(100%);transition:transform .3s cubic-bezier(.3,.8,.3,1);display:flex;flex-direction:column}
+  .drawer.show{transform:translateX(0)}
+  .drawer-head{padding:22px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .drawer-head h3{font-size:1.3rem}
+  .x{background:none;border:none;color:var(--steel);font-size:1.5rem;cursor:pointer;line-height:1}
+  .x:hover{color:var(--foam)}
+  .drawer-body{flex:1;overflow-y:auto;padding:12px 24px}
+  .cart-empty{font-family:"IBM Plex Mono";font-size:.85rem;color:var(--steel);text-align:center;padding:60px 10px;line-height:1.9}
+  .cart-item{display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line-2)}
+  .cart-item .cw{font-family:"Oswald";font-weight:700;font-size:1.35rem;color:var(--rust);flex:0 0 auto;min-width:64px;text-align:center;line-height:1}
+  .cart-item .cw small{display:block;font-family:"IBM Plex Mono";font-size:.52rem;color:var(--steel);letter-spacing:.14em;margin-top:3px}
+  .cart-item .ci{flex:1}
+  .cart-item .ci h4{font-family:"Work Sans";font-weight:600;font-size:.98rem;margin-bottom:3px}
+  .cart-item .ci .meta{font-family:"IBM Plex Mono";font-size:.72rem;color:var(--steel)}
+  .cart-item .cp{font-family:"Oswald";font-weight:700;font-size:1.15rem;align-self:center}
+  .cart-item .rm{background:none;border:none;color:var(--steel);cursor:pointer;font-family:"IBM Plex Mono";font-size:.68rem;text-decoration:underline;padding:0;margin-top:4px}
+  .cart-item .rm:hover{color:var(--rust)}
+  .drawer-foot{padding:20px 24px;border-top:1px solid var(--line)}
+  .subtotal{display:flex;justify-content:space-between;font-family:"IBM Plex Mono";font-size:.82rem;color:#b7b2a6;padding:4px 0}
+  .subtotal.total{color:var(--foam);font-size:1rem;border-top:1px solid var(--line-2);margin-top:8px;padding-top:12px}
+  .subtotal.total b{font-family:"Oswald";font-weight:700;font-size:1.5rem;color:var(--buoy)}
+  .buy{width:100%;margin-top:16px;background:var(--rust);color:var(--foam);border:none;font-family:"Oswald";font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:1.05rem;padding:16px;border-radius:2px;cursor:pointer;transition:background .2s}
+  .buy:hover{background:var(--rust-lo)}
+  .buy:disabled{opacity:.4;cursor:not-allowed;background:var(--hull-2)}
+
+  /* modal (form + receipt) */
+  .modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%) scale(.98);opacity:0;pointer-events:none;z-index:210;width:520px;max-width:94vw;max-height:90vh;overflow-y:auto;background:var(--deep);border:1px solid var(--line);border-radius:5px;transition:opacity .25s,transform .25s}
+  .modal.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .modal-head{padding:22px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .modal-head h3{font-size:1.35rem}
+  .modal-body{padding:24px 26px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-family:"IBM Plex Mono";font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);margin-bottom:6px}
+  .field input,.field select{width:100%;background:var(--hull);border:1px solid var(--line);border-radius:2px;color:var(--foam);font-family:"Work Sans";font-size:.95rem;padding:11px 12px}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--rust)}
+  .field.row{display:flex;gap:14px}
+  .field.row>div{flex:1}
+  .form-note{font-family:"IBM Plex Mono";font-size:.68rem;color:var(--steel);margin-bottom:18px;line-height:1.6}
+
+  /* receipt */
+  .receipt{font-family:"IBM Plex Mono",monospace}
+  .receipt .paid{text-align:center;padding:26px 20px 18px}
+  .receipt .paid .seal{display:inline-block;border:2px solid var(--buoy);color:var(--buoy);font-family:"Oswald";font-weight:700;letter-spacing:.18em;text-transform:uppercase;font-size:1.1rem;padding:8px 20px;border-radius:3px;transform:rotate(-3deg)}
+  .receipt .paid p{font-size:.72rem;color:var(--steel);margin-top:12px;letter-spacing:.08em}
+  .rdiv{border:none;border-top:1px dashed var(--line);margin:0 26px}
+  .rline{display:flex;justify-content:space-between;font-size:.8rem;color:#c9c3b6;padding:6px 26px}
+  .rline.head{color:var(--steel);text-transform:uppercase;letter-spacing:.1em;font-size:.66rem;padding-top:16px}
+  .rline.big{color:var(--foam);font-size:1rem;padding-top:12px;padding-bottom:14px}
+  .rline.big b{font-family:"Oswald";font-size:1.4rem;color:var(--buoy)}
+  .pickup{background:var(--hull);margin:16px 26px;padding:16px 18px;border-radius:3px;border-left:3px solid var(--rust)}
+  .pickup .k{font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--buoy);margin-bottom:8px}
+  .pickup .addr{font-size:.92rem;color:var(--foam);line-height:1.6}
+  .pickup .hrs{font-size:.72rem;color:var(--steel);margin-top:10px}
+  .receipt .foot{font-size:.68rem;color:var(--steel);text-align:center;padding:6px 26px 4px;line-height:1.7}
+
+  @media(max-width:900px){
+    nav ul{display:none}
+    .burger{display:block}
+    .hero-grid{grid-template-columns:1fr}
+    .rig{display:none}
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .steps{grid-template-columns:1fr}
+    .sell .wrap{grid-template-columns:1fr}
+    .sell .side{text-align:left}
+    .foot-grid{grid-template-columns:1fr 1fr}
+    .sec-head .note{text-align:left}
+    .chip.add{margin-left:0}
+  }
+  @media(max-width:540px){.grid{grid-template-columns:1fr}.foot-grid{grid-template-columns:1fr}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand"><span class="mark">&#9875;</span><b>Single&#8209;Use&nbsp;<span>Boat&nbsp;Anchors</span></b></div>
+    <nav>
+      <ul>
+        <li><a href="#browse">Browse anchors</a></li>
+        <li><button class="linkish" onclick="openForm()">Sell heavy junk</button></li>
+        <li><a href="#how">How it works</a></li>
+        <li><button class="cart-btn" onclick="openCart()">Hold &nbsp;<b id="count">0</b></button></li>
+      </ul>
+    </nav>
+    <button class="burger" aria-label="Menu" onclick="openCart()">&#9776;</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">The one-time anchor marketplace</p>
+      <h1>Anchor once.<br>Cut the line.<br><em>Sail off lighter.</em></h1>
+      <p class="lede">Heavy objects, sold by the pound, delivered to the bottom of the lake exactly one time.</p>
+      <div class="btns">
+        <button class="btn btn-primary" onclick="document.getElementById('browse').scrollIntoView()">Browse anchors</button>
+        <button class="btn btn-ghost" onclick="openForm()">List your heavy junk</button>
+      </div>
+      <div class="trust">
+        <span>&#9875; Priced by the pound</span>
+        <span>&#129701; Rope not included</span>
+        <span>&#128683; No returns necessary</span>
+      </div>
+    </div>
+    <div class="rig" aria-hidden="true">
+      <div class="cleat"></div><div class="rope"></div>
+      <div class="weight">
+        <div class="n">1,120</div>
+        <div class="l">lb sink weight</div>
+        <div class="cut">&mdash; &#9986; then you cut here &mdash;</div>
+      </div>
+      <div class="seabed"></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="how">
+  <div class="wrap">
+    <div class="sec-head"><h2>Three steps to a lighter boat</h2><p class="note">Yes, it really is this simple.</p></div>
+    <div class="steps">
+      <div class="step"><div class="num">01</div><h3>Buy something heavy</h3><p>Pick an object dense enough to hold your vessel. Haul it to the dock with your own trailer.</p></div>
+      <div class="step"><div class="num">02</div><h3>Drop &amp; anchor</h3><p>Tie on your rope, heave it overboard, and enjoy a firmly anchored afternoon.</p></div>
+      <div class="step"><div class="num">03</div><h3>Cut the line &amp; go</h3><p>When you're done, cut the rope. The anchor stays. You leave lighter than you arrived.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="browse">
+  <div class="wrap">
+    <div class="sec-head"><h2>Available now near you</h2><p class="note">Local pickup only. If it fit in a mailbox, it wouldn't be a good anchor.</p></div>
+    <div class="chips" id="chips">
+      <button class="chip on" data-f="all">all</button>
+      <button class="chip" data-f="engine">engine blocks</button>
+      <button class="chip" data-f="safe">safes</button>
+      <button class="chip" data-f="motor">motors</button>
+      <button class="chip" data-f="chassis">chassis</button>
+      <button class="chip" data-f="other">other</button>
+      <button class="chip add" onclick="openForm()">+ List a heavy object</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</section>
+
+<section class="sell" id="sell">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Got something heavy?</p>
+      <h2>Your junk is somebody's anchor</h2>
+      <p>That engine block rusting in the yard. The safe nobody can open. The motor too heavy to bother scrapping. List it here. A boat owner brings a trailer, hands you cash, and hauls your problem straight to the bottom of a lake.</p>
+      <div class="btns" style="margin-top:26px"><button class="btn btn-primary" onclick="openForm()">List a heavy object</button></div>
+    </div>
+    <div class="side"><div class="big">$0</div><div class="cap">to list &middot; we take a cut only when it sinks</div></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brand" style="margin-bottom:14px"><span class="mark">&#9875;</span><b>Single&#8209;Use&nbsp;<span>Boat&nbsp;Anchors</span></b></div>
+        <p style="font-size:.88rem;max-width:34ch">The marketplace for objects that go down once and stay down. Rope, courage, and good judgment sold separately.</p>
+      </div>
+      <div><h4>Marketplace</h4><ul><li><a href="#browse">Browse anchors</a></li><li><a onclick="openForm()">Sell heavy junk</a></li><li><a href="#how">How it works</a></li><li><a onclick="openCart()">View your hold</a></li></ul></div>
+      <div><h4>The fine print</h4><ul><li><a>Rope buying guide</a></li><li><a>Trailer &amp; pickup tips</a></li><li><a>Weight calculator</a></li><li><a>Contact the dock</a></li></ul></div>
+    </div>
+    <p class="disclaim">This is a joke website / design mockup. Do not actually cut anchor lines or dump objects into waterways &mdash; abandoning debris in lakes, rivers, and oceans is illegal, harmful to wildlife, and a hazard to other vessels. Please anchor responsibly with real, retrievable ground tackle. &copy; <span id="yr"></span> Single-Use Boat Anchors. All listings fictional.</p>
+  </div>
+</footer>
+
+<!-- overlay + drawer + modals -->
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+<aside class="drawer" id="drawer" aria-label="Your hold">
+  <div class="drawer-head"><h3>Your hold</h3><button class="x" onclick="closeAll()">&times;</button></div>
+  <div class="drawer-body" id="cartBody"></div>
+  <div class="drawer-foot">
+    <div class="subtotal"><span>Sink weight in hold</span><span id="wsum">0 lb</span></div>
+    <div class="subtotal"><span>Delivery</span><span>$0 (you're the delivery)</span></div>
+    <div class="subtotal total"><span>Total due</span><b id="total">$0</b></div>
+    <button class="buy" id="buyBtn" onclick="buy()" disabled>Buy &amp; ready for pickup</button>
+  </div>
+</aside>
+
+<div class="modal" id="formModal" role="dialog" aria-label="List a heavy object">
+  <div class="modal-head"><h3>List a heavy object</h3><button class="x" onclick="closeAll()">&times;</button></div>
+  <div class="modal-body">
+    <p class="form-note">No account needed. Describe your heavy thing. It appears in the marketplace immediately, right at the top.</p>
+    <div class="field"><label>What is it?</label><input id="fTitle" placeholder="e.g. Cracked cast-iron bathtub"></div>
+    <div class="field row">
+      <div><label>Category</label><select id="fCat"><option value="engine">Engine block</option><option value="safe">Safe</option><option value="motor">Motor</option><option value="chassis">Chassis</option><option value="other" selected>Other heavy thing</option></select></div>
+      <div><label>Sink weight (lb)</label><input id="fWeight" type="number" min="1" placeholder="e.g. 700"></div>
+    </div>
+    <div class="field row">
+      <div><label>Price ($)</label><input id="fPrice" type="number" min="0" placeholder="e.g. 35"></div>
+      <div><label>Your town, ST</label><input id="fLoc" placeholder="e.g. Peoria, IL"></div>
+    </div>
+    <div class="field"><label>Condition (optional)</label><input id="fCond" placeholder="e.g. Rusty, heavy, yours if you haul it"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="submitListing()">Post my heavy object</button>
+  </div>
+</div>
+
+<div class="modal receipt" id="receiptModal" role="dialog" aria-label="Receipt">
+  <div class="modal-head"><h3>Receipt</h3><button class="x" onclick="closeAll()">&times;</button></div>
+  <div id="receiptBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // ---- seed listings ----
+  const seed = [
+    {id:'v8',    cat:'engine',  title:'1972 Big-Block V8 Engine',       weight:1120, price:45,  tags:['engine block','cast iron','seized'],  cond:"Won't start, will sink",       pickup:'Trailer + a friend',   loc:'Toledo, OH'},
+    {id:'diesel',cat:'engine',  title:'Diesel Tractor Engine, Complete',weight:1450, price:70,  tags:['engine block','diesel','solid'],      cond:'Ran when parked. Not anymore.', pickup:'Forklift recommended', loc:'Peoria, IL'},
+    {id:'i6',    cat:'engine',  title:'Inline-6 Truck Block, Bare',     weight:780,  price:35,  tags:['engine block','cracked head'],        cond:'Cracked head, solid iron',      pickup:'Two people, bad backs',loc:'Rockford, IL'},
+    {id:'inboard',cat:'engine', title:'Marine Inboard Engine',          weight:960,  price:55,  tags:['engine block','marine','ironic'],     cond:'Retired from the water. Returning to it.', pickup:'Trailer',   loc:'Muskegon, MI'},
+
+    {id:'safe',  cat:'safe',    title:'Antique Cast-Iron Floor Safe',   weight:880,  price:60,  tags:['safe','combo lost','empty*'],         cond:"Sealed. Don't ask.",            pickup:'Forklift recommended', loc:'Erie, PA'},
+    {id:'vault', cat:'safe',    title:'Old Bank Vault Door',            weight:1600, price:120, tags:['safe','vault','massive'],             cond:'Heaviest door you will ever own',pickup:'Bring the big trailer',loc:'Buffalo, NY'},
+    {id:'gun',   cat:'safe',    title:'1980s Gun Safe, Keyless',        weight:640,  price:50,  tags:['safe','no key','steel'],              cond:'Empty. Probably.',              pickup:'Two people',           loc:'Green Bay, WI'},
+    {id:'file',  cat:'safe',    title:'Fireproof Filing Safe',          weight:520,  price:30,  tags:['safe','fireproof'],                   cond:'Fireproof, not float-proof',    pickup:'Hand truck',           loc:'Racine, WI'},
+
+    {id:'motor', cat:'motor',   title:'3-Phase Industrial Motor',       weight:640,  price:30,  tags:['electric motor','copper core','dense'],cond:'Dead, gloriously heavy',       pickup:'Two people, bad backs',loc:'Gary, IN'},
+    {id:'elev',  cat:'motor',   title:'Elevator Traction Motor',        weight:1180, price:90,  tags:['motor','geared','huge'],              cond:'Went up and down for 40 years', pickup:'Forklift recommended', loc:'Duluth, MN'},
+    {id:'pump',  cat:'motor',   title:'Large Water Pump Motor',         weight:700,  price:40,  tags:['motor','pump','sealed'],              cond:'Pumps no more',                 pickup:'Trailer',              loc:'Superior, WI'},
+    {id:'winch', cat:'motor',   title:'Winch Motor & Drum Assembly',    weight:820,  price:55,  tags:['motor','winch','steel'],              cond:'Ironic, we know',               pickup:'Two people',           loc:'Manitowoc, WI'},
+
+    {id:'axle',  cat:'chassis', title:"'80s Pickup Rear Axle & Frame",  weight:1340, price:25,  tags:['chassis','rusted','extremely heavy'], cond:'No title, no engine',           pickup:"You'll need a trailer",loc:'Flint, MI'},
+    {id:'trailer',cat:'chassis',title:'Boat Trailer Frame, Bent',       weight:610,  price:20,  tags:['chassis','steel frame'],              cond:'Retired from hauling boats',    pickup:'Trailer (another one)',loc:'Bay City, MI'},
+    {id:'trans', cat:'chassis', title:'Automatic Transmission',         weight:340,  price:18,  tags:['chassis','driveline'],                cond:'Slushbox, now ballast',         pickup:'One strong person',    loc:'Hammond, IN'},
+    {id:'drums', cat:'chassis', title:'Semi-Truck Brake Drum Set',      weight:900,  price:48,  tags:['chassis','cast iron','set of 4'],     cond:'Four of them. Heavy four.',     pickup:'Two people',           loc:'Saginaw, MI'},
+
+    {id:'tub',   cat:'other',   title:'Clawfoot Cast-Iron Bathtub',     weight:480,  price:28,  tags:['cast iron','rusty'],                  cond:'Rusty, heavy, yours if you haul it', pickup:'Two people',      loc:'Ashtabula, OH'},
+    {id:'anvil', cat:'other',   title:"Blacksmith's Anvil, 200 lb",     weight:200,  price:85,  tags:['forged steel','compact'],             cond:'Honestly a decent anchor',      pickup:'One strong person',    loc:'Waukegan, IL'},
+    {id:'bumper',cat:'other',   title:'Concrete Parking Bumper',        weight:300,  price:12,  tags:['concrete','the classic'],             cond:'Comes in gray',                 pickup:'Two people',           loc:'Superior, WI'},
+    {id:'stove', cat:'other',   title:'Cast-Iron Wood-Burning Stove',   weight:420,  price:32,  tags:['cast iron','antique'],                cond:'Heats nothing now. Sinks great.',pickup:'Two people',          loc:'Duluth, MN'}
+  ];
+  const grid = document.getElementById('grid');
+  let uid = 0;
+
+  function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+  function cardHTML(o){
+    const tags = (o.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('');
+    return `
+      <div class="sold-band">Sold &mdash; sinking</div>
+      <div class="stamp">Single use only</div>
+      <div class="weight-plate"><div class="n">${Number(o.weight).toLocaleString()}<small>lb</small></div><div class="l">Sink weight</div></div>
+      <div class="card-body">
+        <h3>${esc(o.title)}</h3>
+        <div class="tags">${tags}</div>
+        <div class="specs">
+          <div><span>Depth rating</span><span>Unlimited</span></div>
+          <div><span>Descent time</span><span>${esc(o.descent||descentFor(o.weight))}</span></div>
+          <div><span>Condition</span><span>${esc(o.cond||'Heavy. Very heavy.')}</span></div>
+          <div><span>Pickup</span><span>${esc(o.pickup||'Bring a trailer')}</span></div>
+        </div>
+        <div class="price-row"><span class="p">$${Number(o.price)}<small>/ once</small></span><span class="tag">${esc(o.loc||'USA')}</span></div>
+        <button class="claim" onclick="addToCart(this)">Claim this anchor</button>
+      </div>`;
+  }
+  function descentFor(w){return '~'+(2.4 + w/380).toFixed(1)+' s'}
+
+  function addCard(o, prepend){
+    const el = document.createElement('article');
+    el.className='card';
+    el.dataset.cat=o.cat; el.dataset.id=o.id; el.dataset.title=o.title;
+    el.dataset.price=o.price; el.dataset.weight=o.weight; el.dataset.loc=o.loc||'USA';
+    el.innerHTML = cardHTML(o);
+    if(prepend) grid.prepend(el); else grid.appendChild(el);
+  }
+  seed.forEach(o=>addCard(o,false));
+
+  // ---- filters ----
+  const chips = document.getElementById('chips');
+  chips.addEventListener('click', e=>{
+    const b = e.target.closest('.chip'); if(!b || b.classList.contains('add')) return;
+    chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    b.classList.add('on');
+    const f = b.dataset.f;
+    [...grid.children].forEach(c=>{ c.style.display = (f==='all'||c.dataset.cat===f)?'':'none'; });
+  });
+
+  // ---- cart ----
+  let cart = [];
+  const $ = id=>document.getElementById(id);
+
+  function addToCart(btn){
+    const card = btn.closest('.card');
+    if(card.classList.contains('sold')){toast('That one already went down.');return;}
+    const id = card.dataset.id;
+    if(cart.find(c=>c.id===id)){ toast('Already in your <b>hold</b>. There\'s only one of each.'); return; }
+    cart.push({id, title:card.dataset.title, price:+card.dataset.price, weight:+card.dataset.weight, loc:card.dataset.loc});
+    updateBadge(); renderCart();
+    toast('Added <b>'+esc(card.dataset.title)+'</b> to your hold.');
+  }
+  function removeItem(id){ cart = cart.filter(c=>c.id!==id); updateBadge(); renderCart(); }
+  function updateBadge(){ $('count').textContent = cart.length; }
+
+  function renderCart(){
+    const body = $('cartBody');
+    if(!cart.length){
+      body.innerHTML = '<div class="cart-empty">Your hold is empty.<br>Go claim something<br>gloriously heavy.</div>';
+    } else {
+      body.innerHTML = cart.map(c=>`
+        <div class="cart-item">
+          <div class="cw">${c.weight.toLocaleString()}<small>lb</small></div>
+          <div class="ci"><h4>${esc(c.title)}</h4><div class="meta">Pickup near ${esc(c.loc)}</div>
+            <button class="rm" onclick="removeItem('${c.id}')">remove</button></div>
+          <div class="cp">$${c.price}</div>
+        </div>`).join('');
+    }
+    const total = cart.reduce((s,c)=>s+c.price,0);
+    const wsum = cart.reduce((s,c)=>s+c.weight,0);
+    $('wsum').textContent = wsum.toLocaleString()+' lb';
+    $('total').textContent = '$'+total;
+    $('buyBtn').disabled = !cart.length;
+  }
+
+  // ---- random pickup location ----
+  const yards=['Great Lakes Scrap & Metal','Riverside Auto Salvage','Harbor Marine Supply','Midwest Iron & Metal','Lakeside Salvage','Tri-County Auto Wreckers','North Shore Recycling','Delta Scrap & Metal','Bayview Marine Services','Statewide Auto Salvage','Ironclad Recycling','Coastal Towing & Recovery'];
+  const streets=['Industrial Pkwy','Commerce Dr','River Rd','Harbor Blvd','Front St','Marina Way','Water St','Lakeshore Dr','Dock St','Foundry Rd'];
+  const towns=[['Sandusky','OH','44870'],['Muskegon','MI','49442'],['Duluth','MN','55802'],['Erie','PA','16501'],['Green Bay','WI','54301'],['Toledo','OH','43604'],['Buffalo','NY','14202'],['Bay City','MI','48706'],['Ashtabula','OH','44004'],['Racine','WI','53403'],['Superior','WI','54880'],['Manitowoc','WI','54220'],['Hammond','IN','46320'],['Saginaw','MI','48601'],['Waukegan','IL','60085'],['Peoria','IL','61602']];
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+  function buy(){
+    if(!cart.length) return;
+    const total = cart.reduce((s,c)=>s+c.price,0);
+    const wsum = cart.reduce((s,c)=>s+c.weight,0);
+    const order = 'SUBA-'+Math.floor(100000+Math.random()*899999);
+    const t = pick(towns);
+    const addr = `${pick(yards)}<br>${Math.floor(100+Math.random()*8900)} ${pick(streets)}<br>${t[0]}, ${t[1]} ${t[2]}`;
+    const now = new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    const lines = cart.map(c=>`<div class="rline"><span>${esc(c.title)} &middot; ${c.weight.toLocaleString()} lb</span><span>$${c.price}</span></div>`).join('');
+
+    $('receiptBody').innerHTML = `
+      <div class="paid"><span class="seal">Paid &middot; ready for pickup</span>
+        <p>Order ${order} &nbsp;&middot;&nbsp; ${now}</p></div>
+      <hr class="rdiv">
+      <div class="rline head"><span>Item</span><span>Price</span></div>
+      ${lines}
+      <hr class="rdiv">
+      <div class="rline"><span>Total sink weight</span><span>${wsum.toLocaleString()} lb</span></div>
+      <div class="rline"><span>Delivery</span><span>$0 &mdash; you're the delivery</span></div>
+      <div class="rline"><span>Payment</span><span>Method on file &mdash; settled</span></div>
+      <div class="rline big"><span>Charged</span><b>$${total}</b></div>
+      <div class="pickup"><div class="k">Ready for pickup at</div>
+        <div class="addr">${addr}</div>
+        <div class="hrs">Open dawn&ndash;dusk, seven days. Bring a trailer, a friend, and a very sharp knife. No delivery &mdash; it's an anchor, you come to it.</div>
+      </div>
+      <p class="foot">A confirmation was <em>not</em> emailed anywhere, because we didn't ask.<br>Please anchor responsibly. This is a joke.</p>`;
+
+    // mark purchased cards sold
+    cart.forEach(c=>{
+      const card = grid.querySelector(`[data-id="${c.id}"]`);
+      if(card){ card.classList.add('sold'); const b=card.querySelector('.claim'); if(b){b.disabled=true;b.textContent='Sold';} }
+    });
+    cart=[]; updateBadge(); renderCart();
+    closeAll(); openModal('receiptModal');
+  }
+
+  // ---- add listing ----
+  function submitListing(){
+    const title=$('fTitle').value.trim();
+    const weight=parseInt($('fWeight').value,10);
+    const price=$('fPrice').value===''?0:parseInt($('fPrice').value,10);
+    if(!title){toast('Give your heavy thing a name.');return;}
+    if(!weight||weight<1){toast('How heavy is it? (needs pounds)');return;}
+    const o={ id:'usr'+(++uid), cat:$('fCat').value, title, weight, price,
+      tags:['user listing', weight>=1000?'extremely heavy':'heavy'],
+      cond:$('fCond').value.trim()||'Heavy. Very heavy.', pickup:'Bring a trailer',
+      loc:$('fLoc').value.trim()||'Somewhere, USA' };
+    addCard(o,true);
+    // reset + jump to grid
+    ['fTitle','fWeight','fPrice','fLoc','fCond'].forEach(i=>$(i).value='');
+    document.querySelectorAll('#chips .chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='all'));
+    [...grid.children].forEach(c=>c.style.display='');
+    closeAll();
+    toast('Listed <b>'+esc(title)+'</b>. It\'s live at the top.');
+    document.getElementById('browse').scrollIntoView();
+  }
+
+  // ---- open/close ----
+  const overlay=$('overlay');
+  function openCart(){ renderCart(); overlay.classList.add('show'); $('drawer').classList.add('show'); }
+  function openForm(){ overlay.classList.add('show'); openModal('formModal'); }
+  function openModal(id){ overlay.classList.add('show'); $(id).classList.add('show'); }
+  function closeAll(){
+    overlay.classList.remove('show');
+    $('drawer').classList.remove('show');
+    $('formModal').classList.remove('show');
+    $('receiptModal').classList.remove('show');
+  }
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAll(); });
+
+  // ---- toast ----
+  let tt;
+  function toast(html){ const el=$('toast'); el.innerHTML=html; el.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'),3400); }
+</script>
+</body>
+</html>
