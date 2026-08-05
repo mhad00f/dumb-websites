@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoINeedATruck.com · Find Your Right-Sized Truck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;700&family=Roboto+Slab:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hazard:#ffd400;
+    --hazard-deep:#f5a623;
+    --asphalt:#15161a;
+    --asphalt-2:#1d1f25;
+    --asphalt-3:#26282f;
+    --steel:#3a3d46;
+    --concrete:#9aa0ab;
+    --bone:#f4f1e8;
+    --rust:#c1440e;
+    --rust-bright:#e8590c;
+    --green:#3fae5a;
+    --line:#34373f;
+    --shadow:0 18px 50px rgba(0,0,0,.55);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--asphalt);
+    color:var(--bone);
+    font-family:'Oswald',sans-serif;
+    font-weight:300;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--hazard);color:#000}
+
+  /* ============ HAZARD STRIPE UTILITY ============ */
+  .hazard-stripe{
+    height:14px;
+    background:repeating-linear-gradient(45deg,var(--hazard) 0 28px,#000 28px 56px);
+    width:100%;
+  }
+  .hazard-stripe.thin{height:8px;background:repeating-linear-gradient(45deg,var(--hazard) 0 18px,#000 18px 36px)}
+
+  /* ============ TOP TICKER ============ */
+  .ticker{
+    background:#000;color:var(--hazard);
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.5px;
+    white-space:nowrap;overflow:hidden;border-bottom:2px solid var(--hazard);
+    padding:7px 0;
+  }
+  .ticker .track{display:inline-block;animation:scroll 38s linear infinite;padding-left:100%}
+  .ticker span{margin:0 30px}
+  .ticker b{color:#fff}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+
+  /* ============ NAV ============ */
+  header{position:sticky;top:0;z-index:200}
+  nav{
+    background:var(--asphalt-2);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 clamp(16px,4vw,48px);
+    border-bottom:3px solid #000;
+    height:68px;
+  }
+  .logo{display:flex;align-items:center;gap:12px;cursor:pointer;text-decoration:none}
+  .logo .mark{
+    width:42px;height:42px;background:var(--hazard);
+    display:grid;place-items:center;border:3px solid #000;
+    transform:rotate(-4deg);box-shadow:3px 3px 0 #000;
+  }
+  .logo .mark svg{width:26px;height:26px}
+  .logo .word{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-1px;color:var(--bone);line-height:.9}
+  .logo .word i{color:var(--hazard);font-style:normal}
+  .logo .word small{display:block;font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:2px;color:var(--concrete);font-weight:400;margin-top:2px}
+  .nav-links{display:flex;gap:4px;align-items:center}
+  .nav-links a{
+    color:var(--concrete);text-decoration:none;font-size:13px;text-transform:uppercase;
+    letter-spacing:1.5px;font-weight:500;padding:8px 14px;transition:.15s;position:relative;
+  }
+  .nav-links a:hover{color:var(--bone)}
+  .nav-links a.trap{color:var(--steel)}
+  .nav-links a.trap:hover{color:var(--rust-bright)}
+  .nav-cta{
+    background:var(--hazard);color:#000 !important;font-weight:700 !important;
+    border:2px solid #000;box-shadow:3px 3px 0 #000;padding:9px 18px !important;
+    transition:.12s;
+  }
+  .nav-cta:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 #000}
+  .nav-cta:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000}
+  .burger{display:none;background:none;border:none;cursor:pointer;flex-direction:column;gap:5px}
+  .burger span{width:26px;height:3px;background:var(--bone);display:block}
+
+  /* ============ HERO ============ */
+  .hero{
+    position:relative;
+    padding:clamp(60px,10vw,130px) clamp(16px,4vw,48px) clamp(50px,7vw,90px);
+    background:
+      radial-gradient(circle at 80% 10%,rgba(255,212,0,.08),transparent 45%),
+      radial-gradient(circle at 10% 90%,rgba(193,68,14,.1),transparent 50%),
+      var(--asphalt);
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(circle at 50% 40%,#000,transparent 80%);
+    pointer-events:none;
+  }
+  .hero-inner{max-width:1200px;margin:0 auto;position:relative;z-index:2}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:3px;
+    color:var(--hazard);text-transform:uppercase;margin-bottom:24px;
+    border:1px solid var(--steel);padding:7px 14px;background:rgba(0,0,0,.3);
+  }
+  .eyebrow .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);animation:pulse 1.4s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+  h1.hero-title{
+    font-family:'Archivo Black',sans-serif;
+    font-size:clamp(44px,9vw,118px);
+    line-height:.86;letter-spacing:-3px;text-transform:uppercase;
+    margin-bottom:28px;
+  }
+  h1.hero-title .yes{
+    color:var(--hazard);display:block;
+    text-shadow:5px 5px 0 #000;
+  }
+  h1.hero-title .strike{position:relative;color:var(--steel)}
+  h1.hero-title .strike::after{
+    content:"";position:absolute;left:-2%;top:52%;width:104%;height:7px;
+    background:var(--rust-bright);transform:rotate(-2.5deg);
+  }
+  .hero-sub{
+    font-size:clamp(16px,2.1vw,22px);font-weight:300;color:var(--concrete);
+    max-width:640px;line-height:1.5;margin-bottom:42px;
+  }
+  .hero-sub b{color:var(--bone);font-weight:500}
+  .hero-cta-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+  .btn{
+    font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;
+    letter-spacing:1.5px;font-size:15px;cursor:pointer;border:none;text-decoration:none;
+    display:inline-flex;align-items:center;gap:10px;transition:.12s;
+  }
+  .btn-primary{
+    background:var(--hazard);color:#000;padding:16px 30px;border:3px solid #000;
+    box-shadow:6px 6px 0 #000;
+  }
+  .btn-primary:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 #000}
+  .btn-primary:active{transform:translate(3px,3px);box-shadow:3px 3px 0 #000}
+  .btn-ghost{
+    background:transparent;color:var(--bone);padding:16px 26px;
+    border:2px solid var(--steel);
+  }
+  .btn-ghost:hover{border-color:var(--hazard);color:var(--hazard)}
+  .hero-stats{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;background:var(--line);margin-top:70px;border:1px solid var(--line);
+  }
+  .hero-stats .stat{background:var(--asphalt-2);padding:24px 22px}
+  .hero-stats .stat .n{font-family:'Archivo Black',sans-serif;font-size:38px;color:var(--hazard);line-height:1}
+  .hero-stats .stat .l{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--concrete);text-transform:uppercase;margin-top:8px}
+
+  /* floating truck silhouette */
+  .truck-silo{position:absolute;right:-60px;bottom:40px;width:min(46vw,560px);opacity:.07;z-index:1;pointer-events:none}
+
+  /* ============ SECTION SHELL ============ */
+  section{position:relative}
+  .sec-pad{padding:clamp(60px,8vw,110px) clamp(16px,4vw,48px)}
+  .wrap{max-width:1200px;margin:0 auto}
+  .sec-head{margin-bottom:50px}
+  .sec-tag{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--hazard);text-transform:uppercase}
+  .sec-title{font-family:'Archivo Black',sans-serif;font-size:clamp(30px,5vw,58px);line-height:.95;letter-spacing:-1.5px;text-transform:uppercase;margin-top:14px}
+  .sec-desc{color:var(--concrete);font-size:17px;max-width:600px;margin-top:18px;line-height:1.6}
+
+  /* ============ ENGINE ============ */
+  #engine{background:var(--asphalt-2);border-top:3px solid #000;border-bottom:3px solid #000}
+  .engine-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:3px solid #000;background:#000;box-shadow:var(--shadow)}
+  .engine-input{background:var(--asphalt);padding:clamp(26px,3vw,44px)}
+  .engine-output{background:linear-gradient(170deg,#101216,#1a1d23);padding:clamp(26px,3vw,44px);position:relative;overflow:hidden}
+  .engine-output::before{
+    content:"";position:absolute;top:-50%;right:-30%;width:80%;height:200%;
+    background:radial-gradient(circle,rgba(255,212,0,.07),transparent 70%);
+  }
+  .field{margin-bottom:26px;position:relative;z-index:2}
+  .field label{display:block;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1.5px;color:var(--hazard);text-transform:uppercase;margin-bottom:10px}
+  .field label .sub{color:var(--concrete);font-weight:400}
+  select,input[type=text]{
+    width:100%;background:var(--asphalt-3);color:var(--bone);border:2px solid var(--steel);
+    padding:14px 16px;font-family:'Oswald',sans-serif;font-size:16px;font-weight:400;
+    appearance:none;cursor:pointer;transition:.15s;
+  }
+  select:focus,input:focus{outline:none;border-color:var(--hazard);background:#2c2f37}
+  .select-wrap{position:relative}
+  .select-wrap::after{content:"▾";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--hazard);pointer-events:none;font-size:14px}
+  .slider-row{display:flex;align-items:center;gap:18px}
+  input[type=range]{flex:1;-webkit-appearance:none;height:8px;background:var(--asphalt-3);border:2px solid var(--steel);cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;background:var(--hazard);border:3px solid #000;cursor:grab;box-shadow:2px 2px 0 #000}
+  input[type=range]::-moz-range-thumb{width:26px;height:26px;background:var(--hazard);border:3px solid #000;cursor:grab}
+  .slider-val{font-family:'Archivo Black',sans-serif;font-size:24px;color:var(--hazard);min-width:72px;text-align:right}
+  .slider-val small{font-size:11px;color:var(--concrete);font-family:'JetBrains Mono',monospace;display:block;font-weight:400}
+
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .check{display:flex;align-items:flex-start;gap:10px;background:var(--asphalt-3);border:2px solid var(--steel);padding:11px 13px;cursor:pointer;transition:.12s;user-select:none}
+  .check:hover{border-color:var(--concrete)}
+  .check.on{border-color:var(--hazard);background:#2c2f37}
+  .check .box{flex-shrink:0;width:20px;height:20px;border:2px solid var(--steel);background:var(--asphalt);display:grid;place-items:center;margin-top:1px;font-family:'Archivo Black',sans-serif;font-size:13px;color:var(--asphalt);transition:.1s}
+  .check.on .box{background:var(--hazard);border-color:var(--hazard);color:#000}
+  .check span{font-size:14px;line-height:1.25;color:var(--bone);font-weight:300}
+  .check.on span{color:var(--bone)}
+  @media(max-width:520px){.checks{grid-template-columns:1fr}}
+
+  .verdict-label{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--concrete);text-transform:uppercase;position:relative;z-index:2}
+  .verdict{
+    font-family:'Archivo Black',sans-serif;font-size:clamp(40px,6vw,76px);line-height:.9;
+    color:var(--hazard);text-transform:uppercase;margin:10px 0 6px;text-shadow:4px 4px 0 #000;
+    position:relative;z-index:2;letter-spacing:-2px;
+  }
+  .verdict-class{display:inline-block;background:var(--rust);color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:1px;padding:5px 12px;font-weight:700;position:relative;z-index:2;text-transform:uppercase;border:2px solid #000}
+  .readout{position:relative;z-index:2;margin-top:28px;border-top:1px dashed var(--steel);padding-top:24px}
+  .readout-line{display:flex;justify-content:space-between;align-items:baseline;font-family:'JetBrains Mono',monospace;font-size:13px;padding:9px 0;border-bottom:1px dotted var(--line)}
+  .readout-line .k{color:var(--concrete);letter-spacing:.5px}
+  .readout-line .v{color:var(--bone);font-weight:500;text-align:right}
+  .readout-line .v.hot{color:var(--hazard)}
+  .narrative{
+    position:relative;z-index:2;margin-top:24px;background:rgba(0,0,0,.35);border-left:4px solid var(--hazard);
+    padding:18px 20px;font-size:16px;line-height:1.55;color:var(--bone);font-weight:300;
+  }
+  .narrative b{color:var(--hazard);font-weight:600}
+  .engine-actions{position:relative;z-index:2;margin-top:28px;display:flex;gap:12px;flex-wrap:wrap}
+
+  /* ============ DATABASE / SCENARIOS ============ */
+  .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px;align-items:center}
+  .chip{
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;
+    background:var(--asphalt-3);color:var(--concrete);border:2px solid var(--steel);
+    padding:9px 16px;cursor:pointer;transition:.12s;font-weight:500;
+  }
+  .chip:hover{border-color:var(--concrete);color:var(--bone)}
+  .chip.active{background:var(--hazard);color:#000;border-color:#000;box-shadow:2px 2px 0 #000}
+  .search-mini{flex:1;min-width:200px;position:relative}
+  .search-mini input{padding-left:42px}
+  .search-mini svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--concrete);pointer-events:none}
+  .scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+  .scenario{
+    background:var(--asphalt-2);border:2px solid var(--line);padding:22px;position:relative;
+    transition:.15s;cursor:default;overflow:hidden;
+  }
+  .scenario::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--steel);transition:.15s}
+  .scenario:hover{border-color:var(--steel);transform:translateY(-3px)}
+  .scenario:hover::before{background:var(--hazard)}
+  .scenario .cls{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--asphalt);background:var(--hazard);display:inline-block;padding:3px 8px;font-weight:700;text-transform:uppercase;margin-bottom:14px}
+  .scenario .cls.heavy{background:var(--rust-bright);color:#fff}
+  .scenario .cls.medium{background:var(--hazard-deep);color:#000}
+  .scenario h4{font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;text-transform:uppercase;line-height:1.1;margin-bottom:10px}
+  .scenario p{font-size:14.5px;color:var(--concrete);line-height:1.5;font-weight:300}
+  .scenario .metrics{margin-top:16px;display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:11px}
+  .scenario .metrics span{color:var(--concrete)}
+  .scenario .metrics b{color:var(--hazard);display:block;font-size:16px;font-weight:700}
+  .empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--steel);font-family:'JetBrains Mono',monospace}
+  .empty-state b{color:var(--rust-bright);font-size:20px;display:block;margin-bottom:8px;text-transform:uppercase}
+
+  /* ============ RATCHET STRIP ============ */
+  #ratchet{background:#000;text-align:center}
+  .ratchet-track{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;margin-top:40px}
+  .ratchet-node{padding:18px 26px;border:2px solid var(--steel);font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;color:var(--concrete);background:var(--asphalt-2);position:relative;font-size:15px}
+  .ratchet-node.on{border-color:var(--hazard);color:var(--hazard);box-shadow:0 0 22px rgba(255,212,0,.25)}
+  .ratchet-arrow{color:var(--hazard);font-size:26px;padding:0 6px}
+  .ratchet-arrow.dead{color:var(--rust)}
+  .ratchet-locked{padding:18px 26px;border:2px dashed var(--rust);color:var(--rust);font-family:'JetBrains Mono',monospace;font-size:13px;text-transform:uppercase;text-decoration:line-through}
+
+  /* ============ CERTIFICATE MODAL ============ */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;backdrop-filter:blur(4px)}
+  .modal-bg.show{display:flex}
+  .cert{
+    background:var(--bone);color:#1a1a1a;max-width:680px;width:100%;position:relative;
+    border:14px solid #000;box-shadow:0 30px 80px rgba(0,0,0,.7);font-family:'Roboto Slab',serif;
+    animation:certIn .35s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes certIn{from{transform:translateY(30px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+  .cert-inner{border:2px solid #c9a227;margin:14px;padding:clamp(24px,4vw,46px);position:relative;background:
+    repeating-linear-gradient(0deg,transparent 0 22px,rgba(0,0,0,.012) 22px 23px)}
+  .cert-inner::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,.4);pointer-events:none}
+  .cert-seal{position:absolute;right:clamp(20px,4vw,46px);bottom:clamp(20px,4vw,46px);width:104px;height:104px;border-radius:50%;border:3px double var(--rust);display:grid;place-items:center;text-align:center;transform:rotate(-12deg);background:rgba(193,68,14,.06)}
+  .cert-seal .s1{font-family:'Archivo Black',sans-serif;font-size:10px;color:var(--rust);letter-spacing:.5px;text-transform:uppercase;line-height:1.2}
+  .cert-seal .s2{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--rust);margin-top:3px}
+  .cert h2{font-family:'Archivo Black',sans-serif;text-align:center;font-size:clamp(22px,4vw,34px);text-transform:uppercase;letter-spacing:1px;line-height:1}
+  .cert .ribbon{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:4px;color:#c9a227;text-transform:uppercase;margin:6px 0 26px}
+  .cert .body-txt{font-size:16px;line-height:1.7;text-align:center;color:#2a2a2a}
+  .cert .body-txt .name{font-weight:700;border-bottom:2px solid #1a1a1a;padding:0 6px}
+  .cert .verdict-big{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,5vw,44px);text-align:center;color:var(--rust);text-transform:uppercase;margin:22px 0;letter-spacing:-1px}
+  .cert .cert-meta{display:grid;grid-template-columns:1fr 1fr;gap:14px 26px;margin:26px 0;font-size:13px}
+  .cert .cert-meta .row{border-bottom:1px solid #cfc8b4;padding-bottom:6px}
+  .cert .cert-meta .lab{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:#8a8472;text-transform:uppercase;display:block;margin-bottom:3px}
+  .cert .cert-meta .val{font-weight:700;color:#1a1a1a}
+  .cert .sig-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:36px;gap:20px}
+  .cert .sig{flex:1}
+  .cert .sig .line{border-top:1.5px solid #1a1a1a;padding-top:6px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:#8a8472;text-transform:uppercase}
+  .cert .sig .scrawl{font-family:'Roboto Slab',serif;font-style:italic;font-size:22px;font-weight:500;transform:rotate(-3deg)}
+  .modal-close{position:absolute;top:-14px;right:-14px;width:44px;height:44px;background:var(--hazard);border:3px solid #000;cursor:pointer;font-family:'Archivo Black',sans-serif;font-size:20px;color:#000;z-index:10;box-shadow:3px 3px 0 #000}
+  .modal-close:hover{background:var(--rust-bright);color:#fff}
+  .cert-buttons{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap}
+  .cert-btn{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;background:#1a1a1a;color:var(--bone);border:none;padding:12px 22px;cursor:pointer;font-weight:500}
+  .cert-btn:hover{background:var(--rust)}
+
+  /* ============ FAQ ============ */
+  .faq-item{border:2px solid var(--line);margin-bottom:12px;background:var(--asphalt-2)}
+  .faq-q{padding:20px 24px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:'Oswald',sans-serif;font-weight:500;font-size:18px;text-transform:uppercase;letter-spacing:.5px}
+  .faq-q .plus{color:var(--hazard);font-family:'Archivo Black',sans-serif;font-size:24px;transition:.2s;flex-shrink:0;margin-left:16px}
+  .faq-item.open .plus{transform:rotate(45deg)}
+  .faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 24px}
+  .faq-item.open .faq-a{max-height:300px;padding-bottom:22px}
+  .faq-a p{color:var(--concrete);line-height:1.65;font-size:15.5px}
+  .faq-a b{color:var(--hazard)}
+
+  /* ============ FOOTER ============ */
+  footer{background:#000;border-top:3px solid var(--hazard);padding:60px clamp(16px,4vw,48px) 30px}
+  .foot-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px}
+  .foot-grid h5{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--hazard);text-transform:uppercase;margin-bottom:18px}
+  .foot-grid a{display:block;color:var(--concrete);text-decoration:none;font-size:14px;padding:5px 0;transition:.12s}
+  .foot-grid a:hover{color:var(--bone);padding-left:6px}
+  .foot-grid p{color:var(--steel);font-size:13.5px;line-height:1.6}
+  .foot-bottom{max-width:1200px;margin:40px auto 0;border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px}
+  .foot-bottom small{color:var(--steel);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.5px;line-height:1.6}
+  .foot-bottom .disc{max-width:560px}
+
+  /* ============ TRAP / 404 OVERLAY ============ */
+  .trap-overlay{position:fixed;inset:0;background:#000;z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;animation:fadeIn .4s ease}
+  .trap-overlay.show{display:flex}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .trap-overlay .code{font-family:'Archivo Black',sans-serif;font-size:clamp(80px,20vw,220px);color:var(--rust);line-height:.8;text-shadow:0 0 60px rgba(193,68,14,.5)}
+  .trap-overlay h3{font-family:'Archivo Black',sans-serif;font-size:clamp(24px,5vw,46px);text-transform:uppercase;margin:20px 0 14px;color:var(--bone);letter-spacing:-1px}
+  .trap-overlay p{color:var(--concrete);font-size:18px;max-width:560px;line-height:1.5;margin-bottom:8px}
+  .trap-overlay .roast{color:var(--hazard);font-family:'JetBrains Mono',monospace;font-size:14px;margin:24px 0;letter-spacing:.5px;max-width:560px;line-height:1.7}
+  .trap-overlay .btn-primary{margin-top:14px}
+  .trap-overlay .counter{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--steel);margin-top:30px;letter-spacing:1px}
+
+  /* toast */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--hazard);color:#000;font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:14px 26px;border:3px solid #000;box-shadow:5px 5px 0 #000;z-index:700;transition:.3s;font-size:14px}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+
+  /* ============ RESPONSIVE ============ */
+  @media(max-width:880px){
+    .nav-links{display:none}
+    .burger{display:flex}
+    .engine-grid{grid-template-columns:1fr}
+    .foot-grid{grid-template-columns:1fr}
+    .truck-silo{opacity:.04}
+    .nav-links.mobile-open{display:flex;position:absolute;top:68px;left:0;right:0;flex-direction:column;background:var(--asphalt-2);border-bottom:3px solid #000;padding:14px;gap:0}
+    .nav-links.mobile-open a{padding:14px;border-bottom:1px solid var(--line)}
+    .cert .cert-meta{grid-template-columns:1fr}
+    .cert-seal{position:static;margin:24px auto 0}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TICKER ===== -->
+<div class="ticker"><div class="track">
+  <span><b>UPDATED:</b> 2026 towing and payload figures now loaded.</span>
+  <span><b>REMINDER:</b> Match your vehicle to your heaviest expected load, not your average one.</span>
+  <span><b>TIP:</b> Account for loads you expect within the next five years.</span>
+  <span><b>NOTE:</b> Certificates of Need are for personal reference only.</span>
+</div></div>
+
+<!-- ===== NAV ===== -->
+<header>
+<nav>
+  <a class="logo" href="#top">
+    <span class="mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M1 16V7h12v9M13 10h4l3 3v3h-7" stroke="#000" stroke-width="2" stroke-linejoin="round"/><circle cx="6" cy="17" r="2.4" fill="#000"/><circle cx="17" cy="17" r="2.4" fill="#000"/></svg>
+    </span>
+    <span class="word">DOINEEDA<i>TRUCK</i><small>TOWING &amp; PAYLOAD ADVISORY</small></span>
+  </a>
+  <div class="nav-links" id="navLinks">
+    <a href="#engine">Capacity Tool</a>
+    <a href="#database">Scenario Library</a>
+    <a href="#ratchet">How It Works</a>
+    <a href="#" onclick="triggerTrap(event)">Downsizing</a>
+    <a href="#engine" class="nav-cta" onclick="scrollEngine(event)">RUN MY ASSESSMENT</a>
+  </div>
+  <button class="burger" onclick="toggleNav()"><span></span><span></span><span></span></button>
+</nav>
+</header>
+
+<div id="top"></div>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <svg class="truck-silo" viewBox="0 0 400 200" fill="var(--bone)"><path d="M10 150V70h180v80M190 95h70l50 45v10H190M40 150a22 22 0 1 0 44 0M280 150a22 22 0 1 0 44 0"/><rect x="200" y="100" width="50" height="30"/></svg>
+  <div class="hero-inner">
+    <span class="eyebrow"><span class="dot"></span>FREE ASSESSMENT · NO LOGIN · INSTANT RESULT</span>
+    <h1 class="hero-title">
+      <span>FIND THE</span>
+      <span class="yes">RIGHT-SIZED</span>
+      <span>TRUCK FOR YOUR LIFE.</span>
+    </h1>
+    <p class="hero-sub">Answer six questions about your week. We'll match you to a towing and payload class with room for it.</p>
+    <div class="hero-cta-row">
+      <a href="#engine" class="btn btn-primary" onclick="scrollEngine(event)">▸ START MY ASSESSMENT</a>
+      <a href="#database" class="btn btn-ghost">Browse the Scenario Library</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="n" data-count="14283">0</div><div class="l">Scenarios in Library</div></div>
+      <div class="stat"><div class="n" data-count="98">0</div><div class="l">% Driver Satisfaction</div></div>
+      <div class="stat"><div class="n" data-count="9">0</div><div class="l">Towing Classes Covered</div></div>
+      <div class="stat"><div class="n" data-count="50">0</div><div class="l">States Covered</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="hazard-stripe"></div>
+
+<!-- ===== ENGINE ===== -->
+<section id="engine" class="sec-pad">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">// CAPACITY TOOL</div>
+      <h2 class="sec-title">The Capacity<br>Assessment</h2>
+      <p class="sec-desc">Tell us about your typical week: your loads, your terrain, and what you might haul later. We'll recommend a class with room to spare.</p>
+    </div>
+
+    <div class="engine-grid">
+      <!-- INPUT -->
+      <div class="engine-input">
+        <div class="field">
+          <label>01 · Primary Use Case</label>
+          <div class="select-wrap">
+            <select id="useCase" onchange="compute()">
+              <option value="grocery">Weekly grocery run (2 bags)</option>
+              <option value="commute">Solo commute, paved roads</option>
+              <option value="ikea">Occasional flat-pack furniture</option>
+              <option value="dog">Transporting one (1) medium dog</option>
+              <option value="kids">School drop-off, suburban</option>
+              <option value="mulch">Annual mulch acquisition</option>
+              <option value="boat">Possible future boat or trailer</option>
+              <option value="apocalypse">General preparedness</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>02 · Heaviest Load You Hauled This Year</label>
+          <div class="slider-row">
+            <input type="range" id="weight" min="5" max="400" value="40" oninput="compute()">
+            <div class="slider-val"><span id="weightVal">40</span><small>LBS</small></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>03 · Typical Terrain</label>
+          <div class="select-wrap">
+            <select id="terrain" onchange="compute()">
+              <option value="1">Smooth asphalt suburb</option>
+              <option value="2">Occasional speed bumps</option>
+              <option value="3">Gravel lots</option>
+              <option value="4">Unpaved overflow parking</option>
+              <option value="5">Highway runs to the cabin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>04 · Future Readiness <span class="sub">(check all that could apply)</span></label>
+          <div class="checks" id="whatIfs">
+            <div class="check" data-w="14" onclick="toggleCheck(this)"><span class="box">✓</span><span>Might get a boat someday</span></div>
+            <div class="check" data-w="12" onclick="toggleCheck(this)"><span class="box">✓</span><span>Browse Facebook Marketplace</span></div>
+            <div class="check" data-w="16" onclick="toggleCheck(this)"><span class="box">✓</span><span>Area could flood, eventually</span></div>
+            <div class="check" data-w="13" onclick="toggleCheck(this)"><span class="box">✓</span><span>Storms drop the occasional branch</span></div>
+            <div class="check" data-w="10" onclick="toggleCheck(this)"><span class="box">✓</span><span>Friends move apartments sometimes</span></div>
+            <div class="check" data-w="15" onclick="toggleCheck(this)"><span class="box">✓</span><span>A patio project is "coming"</span></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>05 · Presence Rating <span class="sub">(how the truck should carry itself)</span></label>
+          <div class="slider-row">
+            <input type="range" id="ego" min="1" max="10" value="6" oninput="compute()">
+            <div class="slider-val"><span id="egoVal">6</span><small>/ 10</small></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>06 · Your Name <span class="sub">(for your assessment summary)</span></label>
+          <input type="text" id="userName" placeholder="e.g. Brad M." oninput="compute()" maxlength="34">
+        </div>
+      </div>
+
+      <!-- OUTPUT -->
+      <div class="engine-output">
+        <div class="verdict-label">// YOUR RECOMMENDATION</div>
+        <div class="verdict" id="verdict">CALCULATING…</div>
+        <div class="verdict-class" id="verdictClass">CLASS PENDING</div>
+
+        <div class="readout" id="readout"></div>
+
+        <div class="narrative" id="narrative"></div>
+
+        <div class="engine-actions">
+          <button class="btn btn-primary" onclick="openCert()">▸ GET MY CERTIFICATE OF NEED</button>
+          <button class="btn btn-ghost" onclick="downsizeAttempt()">Could I get by with less?</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="hazard-stripe thin"></div>
+
+<!-- ===== DATABASE ===== -->
+<section id="database" class="sec-pad" style="background:var(--asphalt-2);border-top:3px solid #000;border-bottom:3px solid #000">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="sec-tag">// SCENARIO LIBRARY</div>
+      <h2 class="sec-title">The Scenario Library</h2>
+      <p class="sec-desc">Browse common hauling situations, each matched to a recommended towing class. Filter by duty level or search for one close to yours.</p>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-mini">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2"/></svg>
+        <input type="text" id="scenSearch" placeholder="Search situations…" oninput="renderScenarios()">
+      </div>
+      <button class="chip active" data-cls="all" onclick="setFilter(this)">All Classes</button>
+      <button class="chip" data-cls="light" onclick="setFilter(this)">Light Duty</button>
+      <button class="chip" data-cls="medium" onclick="setFilter(this)">Medium Duty</button>
+      <button class="chip" data-cls="heavy" onclick="setFilter(this)">Heavy / HD</button>
+    </div>
+
+    <div class="scenario-grid" id="scenarioGrid"></div>
+  </div>
+</section>
+
+<!-- ===== RATCHET ===== -->
+<section id="ratchet" class="sec-pad">
+  <div class="wrap" style="text-align:center">
+    <div class="sec-tag">// OUR PHILOSOPHY</div>
+    <h2 class="sec-title" style="margin-top:14px">Plan One Class Up</h2>
+    <p class="sec-desc" style="margin:18px auto 0">Needs grow over time. We size our recommendations for where you're likely to be in a few years, with headroom to spare.</p>
+
+    <div class="ratchet-track">
+      <div class="ratchet-node">Sedan</div>
+      <span class="ratchet-arrow">›</span>
+      <div class="ratchet-node">Crossover</div>
+      <span class="ratchet-arrow">›</span>
+      <div class="ratchet-node on">Mid-Size Truck</div>
+      <span class="ratchet-arrow">›</span>
+      <div class="ratchet-node">Half-Ton</div>
+      <span class="ratchet-arrow">›</span>
+      <div class="ratchet-node">HD Dually</div>
+    </div>
+    <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--steel);margin-top:30px;letter-spacing:.5px;line-height:1.7">You're here today.<br>Most drivers move up a class within a few years.</p>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="foot-grid">
+    <div>
+      <h5>// DoINeedATruck.com</h5>
+      <p>An independent towing and payload advisory. We match drivers to a vehicle class sized for how they drive now and what they expect to haul later.<br><br>Free to use. No account required.</p>
+    </div>
+    <div>
+      <h5>Tools</h5>
+      <a href="#engine">Capacity Assessment</a>
+      <a href="#database">Scenario Library</a>
+      <a href="#ratchet">Our Philosophy</a>
+      <a href="#" onclick="triggerTrap(event)">Downsizing</a>
+    </div>
+    <div>
+      <h5>About</h5>
+      <a href="#" onclick="event.preventDefault();toast('Certificates are for personal reference only.')">Certificate Info</a>
+      <a href="#" onclick="event.preventDefault();toast('We don\'t require an account or store your answers.')">Privacy</a>
+      <a href="#" onclick="event.preventDefault();toast('Recommendations are advisory only.')">Terms</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <small class="disc">This site is a parody and offers no real towing, safety, or purchasing advice. Recommendations are intentionally generous and should not be followed. Before buying any vehicle, talk to a qualified dealer, check the manufacturer's actual ratings, and be honest with yourself about what you'll really haul.</small>
+    <small>© 2026 DOINEEDATRUCK.COM<br>TOWING &amp; PAYLOAD ADVISORY</small>
+  </div>
+</footer>
+
+<!-- ===== CERTIFICATE MODAL ===== -->
+<div class="modal-bg" id="certModal">
+  <div class="cert" id="certCard">
+    <button class="modal-close" onclick="closeCert()">✕</button>
+    <div class="cert-inner">
+      <h2>Certificate of Need</h2>
+      <div class="ribbon">· Personalized Assessment Result ·</div>
+      <p class="body-txt">This certifies that<br><span class="name" id="certName">The Bearer</span><br>has completed the capacity assessment and is matched to:</p>
+      <div class="verdict-big" id="certVerdict">A BIGGER TRUCK</div>
+      <p class="body-txt" id="certReason">based on the loads, terrain, and future plans provided in the assessment.</p>
+      <div class="cert-meta">
+        <div class="row"><span class="lab">Towing Class</span><span class="val" id="certClass">—</span></div>
+        <div class="row"><span class="lab">Confidence Score</span><span class="val" id="certScore">—</span></div>
+        <div class="row"><span class="lab">Certificate No.</span><span class="val" id="certNo">—</span></div>
+        <div class="row"><span class="lab">Date Issued</span><span class="val" id="certDate">—</span></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig">
+          <div class="scrawl">DoINeedATruck</div>
+          <div class="line">Issued by DoINeedATruck.com</div>
+        </div>
+        <div class="sig" style="max-width:140px">
+          <div class="scrawl" style="text-align:right">∿∿∿</div>
+          <div class="line">Reviewed with</div>
+        </div>
+      </div>
+      <div class="cert-seal">
+        <div>
+          <div class="s1">SEAL OF<br>NEED</div>
+          <div class="s2">CLASS ▸</div>
+        </div>
+      </div>
+      <div class="cert-buttons">
+        <button class="cert-btn" onclick="copyCert()">⧉ COPY TO SHARE</button>
+        <button class="cert-btn" onclick="toast('Saved for your reference.')">✓ SAVE FOR MY RECORDS</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TRAP / 404 OVERLAY ===== -->
+<div class="trap-overlay" id="trapOverlay">
+  <div class="code">404</div>
+  <h3>Page Not Found</h3>
+  <p>This site does not include a downsizing tool.</p>
+  <button class="btn btn-primary" onclick="closeTrap()">▸ RETURN TO THE CAPACITY ASSESSMENT</button>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   THE JUSTIFICATION ENGINE — pure client-side, no backend.
+   ============================================================ */
+
+/* --- Each use case has a base payload "demand" multiplier --- */
+const USE_CASES = {
+  grocery:   {label:"Weekly grocery run", demand:1.0,  blurb:"Groceries today, but the right truck handles the big Costco trips, the holiday hauls, and everything in between without breaking a sweat."},
+  commute:   {label:"Solo paved commute", demand:1.2,  blurb:"You spend real hours behind the wheel. A higher seating position and more vehicle around you turns the daily drive into the safest part of your day."},
+  ikea:      {label:"Occasional flat-pack", demand:2.4, blurb:"Furniture runs are unpredictable. A proper bed means you're never the one renting a truck at the store, or strapping a box to a roof and hoping."},
+  dog:       {label:"One medium dog", demand:2.0,  blurb:"One dog today. But families and adventures grow, and a vehicle with room for the whole crew — two-legged and four — is never a decision you'll regret."},
+  kids:      {label:"Suburban school run", demand:3.1, blurb:"Hauling kids and their gear adds up fast. Extra space and capability means you're the family that's always ready, never scrambling."},
+  mulch:     {label:"Annual mulch event", demand:4.0, blurb:"Yard projects have a way of expanding. The truck that handles this spring's mulch is the same one that handles next spring's much bigger ideas."},
+  boat:      {label:"Possible future boat", demand:6.5, blurb:"You're planning ahead, and that's smart. Buying for the boat or trailer you're thinking about means you won't be shopping for a new truck the moment you get one."},
+  apocalypse:{label:"General preparedness", demand:8.5, blurb:"When you're the one with the capability, you're the one people call. Being ready for anything is its own kind of peace of mind."}
+};
+
+const CLASSES = [
+  {min:0,   name:"Mid-Size Pickup",         short:"MID-SIZE",  badge:"medium", verdict:"A TRUCK",            tow:"6,500 lb"},
+  {min:28,  name:"Half-Ton (1500-series)",  short:"HALF-TON",  badge:"medium", verdict:"A BIGGER TRUCK",     tow:"11,200 lb"},
+  {min:52,  name:"Three-Quarter Ton (2500)",short:"3/4-TON",   badge:"heavy",  verdict:"A HEAVY-DUTY TRUCK", tow:"18,500 lb"},
+  {min:78,  name:"One-Ton Dually (3500 HD)",short:"HD DUALLY", badge:"heavy",  verdict:"A FULL HD TRUCK",    tow:"36,000 lb"},
+  {min:105, name:"Medium-Duty Class 5",     short:"CLASS 5",   badge:"heavy",  verdict:"A COMMERCIAL TRUCK", tow:"50,000+ lb"}
+];
+
+let lastResult = null;
+
+function pickClass(score){
+  let c = CLASSES[0];
+  for(const k of CLASSES){ if(score >= k.min) c = k; }
+  return c;
+}
+
+function compute(){
+  const useKey = document.getElementById('useCase').value;
+  const weight = +document.getElementById('weight').value;
+  const terrain = +document.getElementById('terrain').value;
+  const ego = +document.getElementById('ego').value;
+  const name = document.getElementById('userName').value.trim();
+
+  document.getElementById('weightVal').textContent = weight;
+  document.getElementById('egoVal').textContent = ego;
+
+  const uc = USE_CASES[useKey];
+
+  /* sum the checked "what if?" futures */
+  let whatIfBonus = 0, whatIfCount = 0;
+  document.querySelectorAll('#whatIfs .check.on').forEach(c=>{ whatIfBonus += +c.dataset.w; whatIfCount++; });
+
+  /* The "math" — deliberately absurd but internally consistent.
+     Baseline stays low so an honest answer lands mid-size;
+     terrain, presence, and the "what if?" futures do the climbing. */
+  const realNeed = (weight/400)*8;                   // your actual, tiny need
+  const demandMult = uc.demand;                       // use-case inflation
+  const terrainBonus = terrain*3;                     // a speed bump = +duty
+  const egoBonus = ego*2.2;                           // presence rating
+  const safetyMargin = 6;                             // "just in case"
+  const futureProof = demandMult*2.5;                 // baseline future-proofing
+
+  let score = realNeed + (demandMult*4) + terrainBonus + egoBonus + safetyMargin + futureProof + whatIfBonus;
+  score = Math.min(160, Math.round(score));
+
+  const cls = pickClass(score);
+
+  /* recommended capacity always >> what's needed */
+  const recommendedTow = cls.tow;
+  const actualNeed = Math.round(weight*1.1);
+  const overkill = Math.round((parseInt(cls.tow.replace(/[^0-9]/g,'')) / Math.max(actualNeed,1)));
+
+  /* "Confidence" always reads high, no matter how little you actually need */
+  const confidence = Math.min(99, 88 + Math.round(score/14));
+
+  lastResult = {name, cls, score, confidence, useLabel:uc.label, actualNeed, recommendedTow, overkill, whatIfCount};
+
+  /* render */
+  document.getElementById('verdict').textContent = cls.verdict;
+  document.getElementById('verdictClass').textContent = "RECOMMENDED CLASS: " + cls.name;
+
+  const futuresLine = `<div class="readout-line"><span class="k">Future scenarios accounted for</span><span class="v${whatIfCount>0?' hot':''}">${whatIfCount} of 6</span></div>`;
+
+  document.getElementById('readout').innerHTML = `
+    <div class="readout-line"><span class="k">Your primary use</span><span class="v">${uc.label}</span></div>
+    <div class="readout-line"><span class="k">Typical load</span><span class="v">~${actualNeed} lb</span></div>
+    ${futuresLine}
+    <div class="readout-line"><span class="k">Recommended tow capacity</span><span class="v hot">${recommendedTow}</span></div>
+    <div class="readout-line"><span class="k">Built-in headroom</span><span class="v hot">${overkill.toLocaleString()}× your typical load</span></div>
+    <div class="readout-line"><span class="k">Match confidence</span><span class="v hot">${confidence}%</span></div>
+  `;
+
+  document.getElementById('narrative').innerHTML =
+    `We recommend <b>${cls.verdict.toLowerCase()}</b>: the ${cls.name} class, rated to ${recommendedTow}. That's ${overkill.toLocaleString()}× your typical load.`;
+
+  /* color the badge */
+  const vc = document.getElementById('verdictClass');
+  vc.style.background = cls.badge==='heavy' ? 'var(--rust)' : 'var(--hazard-deep)';
+  vc.style.color = cls.badge==='heavy' ? '#fff' : '#000';
+}
+
+function toggleCheck(el){ el.classList.toggle('on'); compute(); }
+
+/* ============ CERTIFICATE ============ */
+function openCert(){
+  if(!lastResult) compute();
+  const r = lastResult;
+  const name = r.name || "The Bearer";
+  document.getElementById('certName').textContent = name;
+  document.getElementById('certVerdict').textContent = r.cls.verdict;
+  document.getElementById('certReason').textContent =
+    `based on a primary use of "${r.useLabel}" and a typical load of about ${r.actualNeed} lb, with room to grow into.`;
+  document.getElementById('certClass').textContent = r.cls.name + " (" + r.cls.tow + ")";
+  document.getElementById('certScore').textContent = r.confidence + "% · STRONG MATCH";
+  document.getElementById('certNo').textContent = "DINT-" + (Math.floor(Math.random()*900000)+100000);
+  document.getElementById('certDate').textContent = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('certModal').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeCert(){ document.getElementById('certModal').classList.remove('show'); document.body.style.overflow=''; }
+function copyCert(){
+  const r = lastResult;
+  const txt = `CERTIFICATE OF NEED · DoINeedATruck.com\n\n${r.name||"This driver"} completed the capacity assessment and is matched to:\n${r.cls.verdict} (${r.cls.name})\n\nMatch confidence: ${r.confidence}% (strong match)\nTypical load: ${r.actualNeed} lb · Recommended capacity: ${r.recommendedTow}\nBuilt-in headroom: ${r.overkill.toLocaleString()}× typical load\n\nDoINeedATruck.com`;
+  navigator.clipboard.writeText(txt).then(()=>toast('Certificate copied to clipboard.'),()=>toast('Copy failed, try again.'));
+}
+
+/* ============ THE DOWNSIZING PAGE ============ */
+function triggerTrap(e){
+  if(e) e.preventDefault();
+  document.getElementById('trapOverlay').classList.add('show');
+  document.body.style.overflow='hidden';
+  closeNav();
+}
+function downsizeAttempt(){ triggerTrap(); }
+function closeTrap(){ document.getElementById('trapOverlay').classList.remove('show'); document.body.style.overflow=''; }
+
+/* ============ SCENARIO DATABASE (static, pre-cached) ============ */
+const SCENARIOS = [
+  {t:"Weekly Grocery Run",c:"light",d:"Bread, eggs, the occasional case of water.",need:"38 lb",tow:"6,500 lb"},
+  {t:"The One Houseplant",c:"light",d:"A single potted plant.",need:"4 lb",tow:"6,500 lb"},
+  {t:"Solo Highway Commute",c:"light",d:"One driver, paved roads, daily miles.",need:"180 lb",tow:"6,500 lb"},
+  {t:"The Costco Run",c:"medium",d:"A full cart, once or twice a month.",need:"112 lb",tow:"11,200 lb"},
+  {t:"Annual Mulch & Yard Work",c:"medium",d:"A few yards of mulch each spring.",need:"600 lb",tow:"11,200 lb"},
+  {t:"Little League Carpool",c:"medium",d:"Kids, gear, and a spare teammate.",need:"320 lb",tow:"11,200 lb"},
+  {t:"Furniture & Flat-Pack",c:"medium",d:"Occasional furniture runs.",need:"190 lb",tow:"11,200 lb"},
+  {t:"Planning for a Boat",c:"heavy",d:"No boat yet. Possibly someday.",need:"Future",tow:"18,500 lb"},
+  {t:"Weekends at the Cabin",c:"heavy",d:"Regular trips out of town with gear.",need:"240 lb",tow:"18,500 lb"},
+  {t:"Future Camper or RV",c:"heavy",d:"Thinking about a travel trailer eventually.",need:"Future",tow:"18,500 lb"},
+  {t:"The Family Dog",c:"light",d:"One medium dog.",need:"65 lb",tow:"6,500 lb"},
+  {t:"Gym & Gear",c:"light",d:"A gym bag, most days.",need:"12 lb",tow:"6,500 lb"},
+  {t:"Winter & Snow",c:"medium",d:"Snow a few times a year.",need:"Seasonal",tow:"11,200 lb"},
+  {t:"Home Improvement Hauls",c:"medium",d:"Lumber and tile for weekend projects.",need:"96 lb",tow:"11,200 lb"},
+  {t:"General Preparedness",c:"heavy",d:"Ready for whatever, unspecified.",need:"Variable",tow:"36,000 lb"},
+  {t:"Trailers & Towing",c:"heavy",d:"Moved a trailer once.",need:"As needed",tow:"36,000 lb"},
+  {t:"Capability First",c:"heavy",d:"Wants more than the daily routine asks.",need:"Reserve",tow:"36,000 lb"},
+  {t:"The Daily Coffee Stop",c:"light",d:"A drive-thru and back.",need:"1 lb",tow:"6,500 lb"},
+  {t:"Curb Presence",c:"medium",d:"Should look ready for anything.",need:"Standby",tow:"11,200 lb"},
+  {t:"The Group Driver",c:"medium",d:"Always the one who drives everyone.",need:"410 lb",tow:"11,200 lb"},
+  {t:"Holiday Hauling",c:"light",d:"One tree, once a year.",need:"22 lb",tow:"6,500 lb"},
+  {t:"Emergency Ready",c:"heavy",d:"A generator, if one is ever bought.",need:"Reserve",tow:"18,500 lb"},
+  {t:"Tactical Parking",c:"medium",d:"Wants a clear view across the lot.",need:"Visibility",tow:"11,200 lb"},
+  {t:"Roadside Recovery",c:"heavy",d:"In case a friend slides off the shoulder.",need:"As needed",tow:"18,500 lb"},
+  {t:"The Marketplace Deal",c:"medium",d:"Browses Facebook Marketplace.",need:"Future",tow:"11,200 lb"},
+  {t:"Rugged Commuting",c:"medium",d:"Paved route, one rough patch.",need:"170 lb",tow:"11,200 lb"},
+  {t:"The Oversized Find",c:"medium",d:"The occasional thing that won't fit a sedan.",need:"Bulky",tow:"11,200 lb"},
+  {t:"1500 vs 2500 vs 3500",c:"heavy",d:"A suburban week. Torn between three trims.",need:"Suburban",tow:"36,000 lb"}
+];
+
+let activeFilter = 'all';
+function setFilter(btn){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.cls;
+  renderScenarios();
+}
+function renderScenarios(){
+  const q = document.getElementById('scenSearch').value.toLowerCase();
+  const grid = document.getElementById('scenarioGrid');
+  const filtered = SCENARIOS.filter(s=>{
+    const matchCls = activeFilter==='all' || s.c===activeFilter;
+    const matchQ = !q || s.t.toLowerCase().includes(q) || s.d.toLowerCase().includes(q);
+    return matchCls && matchQ;
+  });
+  if(filtered.length===0){
+    grid.innerHTML = `<div class="empty-state"><b>No scenarios match.</b>Try a broader search, or run the capacity assessment.</div>`;
+    return;
+  }
+  const badgeName = {light:'LIGHT DUTY',medium:'MEDIUM DUTY',heavy:'HEAVY / HD'};
+  grid.innerHTML = filtered.map(s=>`
+    <div class="scenario">
+      <span class="cls ${s.c}">${badgeName[s.c]}</span>
+      <h4>${s.t}</h4>
+      <p>${s.d}</p>
+      <div class="metrics">
+        <span>ACTUAL NEED<b>${s.need}</b></span>
+        <span>REC. CAPACITY<b>${s.tow}</b></span>
+      </div>
+    </div>`).join('');
+}
+
+/* ============ MISC UI ============ */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._tt); window._tt = setTimeout(()=>t.classList.remove('show'),2600);
+}
+function scrollEngine(e){ if(e)e.preventDefault(); document.getElementById('engine').scrollIntoView({behavior:'smooth'}); closeNav(); }
+function toggleNav(){ document.getElementById('navLinks').classList.toggle('mobile-open'); }
+function closeNav(){ document.getElementById('navLinks').classList.remove('mobile-open'); }
+
+/* count-up hero stats */
+function animateCounts(){
+  document.querySelectorAll('[data-count]').forEach(el=>{
+    const target = +el.dataset.count; const dur=1400; const start=performance.now();
+    function step(now){
+      const p = Math.min((now-start)/dur,1);
+      const eased = 1-Math.pow(1-p,3);
+      el.textContent = Math.round(target*eased).toLocaleString();
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+/* close modals on backdrop / escape */
+document.getElementById('certModal').addEventListener('click',e=>{ if(e.target.id==='certModal') closeCert(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeCert(); closeTrap(); } });
+
+/* init */
+compute();
+renderScenarios();
+window.addEventListener('load',()=>{ setTimeout(animateCounts,300); });
+</script>
+</body>
+</html>
