@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<!--
+  rsvp — RSVP speed reader: one word at a time, pinned to a fixed focus point
+
+  WHAT IT DOES: Paste text, and it flashes one word at a time in a fixed
+    screen position so your eyes stop moving. Each word is aligned on its
+    optimal recognition point (ORP) — the letter your brain recognizes a
+    word from fastest, roughly a third in — and that letter is highlighted
+    and pinned to the same column every time. Speed is adjustable in wpm
+    and text size from 10% to 200%; the reader opens paused so both can be
+    set before the text moves.
+    Consumption tool, not speed training: no stats, no progression.
+  USAGE: open this page in any browser.
+    Space = play/pause, arrows = speed, shift+arrows = skip 10 words,
+    - and = resize the text, R = restart, N = new text. On a phone, tap the
+    word to pause. The progress bar is a scrubber — click or drag it to
+    move through the text.
+  REQUIRES: nothing — single static file, no build step, no dependencies.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rsvp</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1c1f25;
+    --ink: #e8e6e3;
+    --dim: #8b9199;
+    --pivot: #e8604c;
+    --accent: #5aa9e6;
+    --edge: #2c313a;
+    --zoom: 1;        /* user text-size multiplier, driven by the A−/A+ buttons */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  main { width: 100%; max-width: 720px; }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin: 0 0 14px;
+  }
+
+  /* ---- paste view ---- */
+
+  textarea {
+    width: 100%;
+    height: 46vh;
+    min-height: 220px;
+    padding: 16px;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 16px;   /* 16px keeps iOS from zooming on focus */
+    line-height: 1.55;
+    resize: vertical;
+  }
+
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .count { color: var(--dim); font-size: 13px; margin-left: auto; }
+
+  /* ---- reader view ---- */
+
+  .stage {
+    background: #000;
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    height: 42vh;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  /* The tick marks bracket the pivot column, giving the eye something
+     stationary to rest on between words. They scale with the text, or at
+     the small end they would tower over the word they're bracketing —
+     clamped so they neither disappear nor take over. */
+  .tick {
+    width: 1px;
+    height: clamp(5px, calc(14px * var(--zoom)), 22px);
+    background: var(--edge);
+    flex: none;
+  }
+
+  /* The side columns split the leftover space evenly, so the middle
+     column — the pivot letter — always lands dead centre no matter how
+     long the word is. That fixed column is the entire point of ORP.
+     minmax(0, 1fr) rather than a bare 1fr: an fr track's default
+     min-width is auto, so a word wider than the stage would refuse to
+     shrink past its own text and shove the pivot off-centre. Long words
+     are scaled down to fit in JS; this is the belt to that braces. */
+  .word {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    width: 100%;
+    /* The clamp keeps the base size responsive to the viewport; --zoom is
+       the reader's own adjustment on top of it, so text scales without
+       dragging the controls along the way browser zoom would. */
+    font-size: calc(clamp(28px, 7vw, 56px) * var(--zoom));
+    font-weight: 600;
+    line-height: 1.3;
+    padding: 10px 0;
+    white-space: pre;
+  }
+
+  .pre  { text-align: right; }
+  .post { text-align: left; }
+  .pivot { color: var(--pivot); }
+
+  .done {
+    font-size: 15px;
+    color: var(--dim);
+    letter-spacing: 0.05em;
+  }
+
+  /* The bar is a scrubber. The visible track stays thin, but the padding
+     around it is part of the hit area — a 4px target is unhittable with a
+     thumb. touch-action: none is what stops the browser treating a drag
+     as a page scroll and swallowing it before we see it. */
+  .scrub {
+    padding: 14px 0;
+    margin: 4px 0;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .track {
+    height: 4px;
+    background: var(--edge);
+    border-radius: 3px;
+    position: relative;
+  }
+
+  .fill {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+
+  .knob {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    transform: translate(-50%, -50%);
+    pointer-events: none;   /* the padded wrapper owns the pointer */
+  }
+
+  .scrub:active .knob { transform: translate(-50%, -50%) scale(1.25); }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--dim);
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+
+  .keys { margin-left: auto; }
+
+  /* ---- controls ---- */
+
+  button {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 11px 15px;
+    font: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    touch-action: manipulation;
+    min-width: 48px;
+  }
+
+  button:hover { border-color: var(--accent); }
+  button:active { background: #262a31; }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0d1117;
+    font-weight: 600;
+  }
+
+  /* Speed and size sit on their own line: nine controls in one row is
+     unreadable on a laptop and unusable on a phone. */
+  .dials {
+    display: flex;
+    gap: 10px 24px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .dial {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dial output {
+    min-width: 78px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--dim);
+    font-size: 14px;
+  }
+
+  [hidden] { display: none !important; }
+
+  @media (max-width: 560px) {
+    .keys { display: none; }               /* no keyboard on the phone */
+    .dial { width: 100%; justify-content: space-between; }
+    .row > button { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <section id="setup-view">
+    <h1>rsvp</h1>
+    <textarea id="text" spellcheck="false" placeholder="Paste what you want to read, then hit Read."></textarea>
+    <div class="row">
+      <button class="primary" id="start">Read</button>
+      <button id="clear">Clear</button>
+      <span class="count" id="count">0 words</span>
+    </div>
+  </section>
+
+  <section id="reader-view" hidden>
+    <h1>rsvp</h1>
+    <div class="stage" id="stage">
+      <div class="tick"></div>
+      <div class="word" id="word"><span class="pre"></span><span class="pivot"></span><span class="post"></span></div>
+      <div class="done" id="done" hidden>— end —</div>
+      <div class="tick"></div>
+    </div>
+
+    <div class="scrub" id="scrub" role="slider" aria-label="Position in text"
+         aria-valuemin="1" aria-valuemax="1" aria-valuenow="1">
+      <div class="track"><div class="fill" id="fill"></div><div class="knob" id="knob"></div></div>
+    </div>
+
+    <div class="meta">
+      <span id="position">0 / 0</span>
+      <span class="keys">space play · ←→ speed · ⇧←→ skip · −/= size · r restart · n new</span>
+    </div>
+
+    <div class="row">
+      <button id="restart" title="Restart">⏮</button>
+      <button id="back" title="Back 10 words">⏪</button>
+      <button class="primary" id="playpause" title="Play/pause">▶</button>
+      <button id="forward" title="Forward 10 words">⏩</button>
+      <button id="newtext" title="New text">📄</button>
+    </div>
+
+    <div class="dials">
+      <span class="dial">
+        <button id="slower" title="Slower">−</button>
+        <output id="wpmout">300 wpm</output>
+        <button id="faster" title="Faster">+</button>
+      </span>
+      <span class="dial">
+        <button id="smaller" title="Smaller text">A−</button>
+        <output id="sizeout">100%</output>
+        <button id="bigger" title="Bigger text">A+</button>
+      </span>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var WPM_MIN = 100, WPM_MAX = 1200, WPM_STEP = 25, SKIP = 10;
+  var ZOOM_MIN = 0.1, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
+
+  var words = [];
+  var index = 0;
+  var wpm = 300;
+  var zoom = 1;
+  var playing = false;
+  var timer = null;
+
+  var el = {
+    setup:     document.getElementById("setup-view"),
+    reader:    document.getElementById("reader-view"),
+    text:      document.getElementById("text"),
+    count:     document.getElementById("count"),
+    stage:     document.getElementById("stage"),
+    word:      document.getElementById("word"),
+    pre:       document.querySelector("#word .pre"),
+    pivot:     document.querySelector("#word .pivot"),
+    post:      document.querySelector("#word .post"),
+    done:      document.getElementById("done"),
+    scrub:     document.getElementById("scrub"),
+    track:     document.querySelector("#scrub .track"),
+    knob:      document.getElementById("knob"),
+    fill:      document.getElementById("fill"),
+    position:  document.getElementById("position"),
+    playpause: document.getElementById("playpause"),
+    wpmout:    document.getElementById("wpmout"),
+    sizeout:   document.getElementById("sizeout")
+  };
+
+  // --- text ---
+
+  // A flash should carry one word. Two different things break that, and
+  // they want different rules.
+  //
+  // Defects in the source — a space that got lost somewhere upstream.
+  // Never legitimate, so they are split whatever the length. Two forms:
+  // a lowercase letter running straight into a capital, and an ellipsis
+  // jammed against the next word. The lowercase→uppercase rule demands
+  // three lowercase letters before the capital — without that floor it
+  // would also break McLeod, MacDonald and DeSantis, and with it iPhone,
+  // eBay and YouTube survive too.
+  //
+  // Joined compounds: hyphens, slashes and dashes really do join separate
+  // words. Left whole, the pivot is computed across the entire compound,
+  // so it lands inside the first part while the rest piles up to one side.
+  // The fixation point holds but the word's centre of mass does not, and
+  // the eye gets dragged after it — the longer the compound, the worse the
+  // pull. Splitting gives each part its own pivot, and keeping the
+  // separator on the left part signals that more is coming.
+  //
+  // Only long compounds are split: co-op, e-mail, x-ray and well-known
+  // read fine in one flash, and breaking them just spends flashes.
+  //
+  // Splitting beats scaling the font down to fit, which would keep the
+  // compound whole at the cost of the type size jumping between words —
+  // instability of a different kind.
+  var SPLIT = " ";        // safe as a marker: tokens never contain spaces
+  var COMPOUND_MIN = 12;  // characters, whole token including punctuation
+
+  function explode(token) {
+    var parts = token
+      .replace(/([a-z]{3})([A-Z])/g, "$1" + SPLIT + "$2")
+      .replace(/(…|\.{3})/g, "$1" + SPLIT);
+    if (token.length >= COMPOUND_MIN) {
+      parts = parts.replace(/([\/\-–—])/g, "$1" + SPLIT);
+    }
+    return parts.split(SPLIT).filter(function (w) { return w.length > 0; });
+  }
+
+  function tokenize(text) {
+    var out = [];
+    text.trim().split(/\s+/).forEach(function (t) {
+      if (t) out = out.concat(explode(t));
+    });
+    return out;
+  }
+
+  // The optimal recognition point sits slightly left of centre, and drifts
+  // right as words get longer. These are the standard bands.
+  function pivotIndex(word) {
+    var n = word.length;
+    if (n <= 1) return 0;
+    if (n <= 5) return 1;
+    if (n <= 9) return 2;
+    return 3;
+  }
+
+  // --- rendering ---
+
+  function render() {
+    el.done.hidden = true;
+    el.word.hidden = false;
+    var word = words[index] || "";
+    var p = pivotIndex(word);
+    el.pre.textContent = word.slice(0, p);
+    el.pivot.textContent = word.slice(p, p + 1);
+    el.post.textContent = word.slice(p + 1);
+    fitWord();
+    updateProgress();
+  }
+
+  // Keeping the pivot centred means each side gets half of whatever the
+  // pivot letter doesn't occupy, so a word whose longer half won't fit is
+  // scaled down until it does. Without this, long words are clipped at the
+  // edges — on a phone that starts happening around 12 characters.
+  //
+  // Measured on a canvas rather than from the DOM: these spans have
+  // overflow visible, and scrollWidth on such an element reports the
+  // column width, not the width of the text spilling out of it.
+  var gauge = document.createElement("canvas").getContext("2d");
+
+  function fitWord() {
+    el.word.style.fontSize = "";
+    var W = el.word.clientWidth;
+    if (!W) return;
+
+    var cs = window.getComputedStyle(el.word);
+    var base = parseFloat(cs.fontSize);
+    gauge.font = cs.fontWeight + " " + base + "px " + cs.fontFamily;
+
+    var side = Math.max(gauge.measureText(el.pre.textContent).width,
+                        gauge.measureText(el.post.textContent).width);
+    var mid = gauge.measureText(el.pivot.textContent).width;
+
+    // Widths scale linearly with font size, so the largest scale s that
+    // still fits solves 2·side·s + mid·s = W.
+    var s = W / (2 * side + mid);
+    if (s < 1) el.word.style.fontSize = (base * s * 0.98) + "px";
+  }
+
+  function updateProgress() {
+    var total = words.length;
+    var shown = Math.min(index + 1, total);
+    var pct = total ? (shown / total * 100) : 0;
+    el.fill.style.width = pct + "%";
+    el.knob.style.left = pct + "%";
+    el.position.textContent = shown + " / " + total;
+    el.scrub.setAttribute("aria-valuemax", String(total || 1));
+    el.scrub.setAttribute("aria-valuenow", String(shown || 1));
+  }
+
+  // Swap in a separate element rather than rewriting the word's markup —
+  // re-creating those spans would leave the cached references pointing at
+  // the wrong nodes, and the next word would render with the end-state
+  // styling instead of the pivot's.
+  function showDone() {
+    el.word.hidden = true;
+    el.done.hidden = false;
+  }
+
+  // --- playback ---
+
+  // Delay is derived from the current step size rather than hardcoded to
+  // one word, so adding chunking later stays a one-line change instead of
+  // silently multiplying the real reading speed.
+  function delayFor(step) {
+    return 60000 / wpm * step;
+  }
+
+  function tick() {
+    if (index >= words.length - 1) { pause(); showDone(); return; }
+    index += 1;
+    render();
+    timer = setTimeout(tick, delayFor(1));
+  }
+
+  function play() {
+    if (playing || !words.length) return;
+    if (index >= words.length - 1) index = 0;   // finished? start over
+    playing = true;
+    el.playpause.textContent = "⏸";
+    render();
+    timer = setTimeout(tick, delayFor(1));
+  }
+
+  function pause() {
+    playing = false;
+    el.playpause.textContent = "▶";
+    clearTimeout(timer);
+    timer = null;
+  }
+
+  function toggle() { playing ? pause() : play(); }
+
+  function seek(to) {
+    index = Math.max(0, Math.min(to, words.length - 1));
+    render();
+  }
+
+  // Text size is a multiplier on the responsive base rather than a fixed
+  // pixel value, so it stacks with the viewport clamp instead of replacing
+  // it — a size chosen on the laptop still behaves on the phone.
+  // fitWord() reads the computed size, so its shrink-to-fit for long words
+  // composes with this automatically.
+  function setZoom(next) {
+    zoom = Math.max(ZOOM_MIN, Math.min(Math.round(next * 100) / 100, ZOOM_MAX));
+    document.documentElement.style.setProperty("--zoom", zoom);
+    el.sizeout.textContent = Math.round(zoom * 100) + "%";
+    if (!el.reader.hidden) render();   // re-fit the word already on screen
+  }
+
+  function setWpm(next) {
+    wpm = Math.max(WPM_MIN, Math.min(next, WPM_MAX));
+    el.wpmout.textContent = wpm + " wpm";
+    // Restart the pending timeout so a speed change lands on the next word
+    // instead of waiting out the old interval.
+    if (playing) { clearTimeout(timer); timer = setTimeout(tick, delayFor(1)); }
+  }
+
+  // --- views ---
+
+  // Opens paused on the first word. Speed and size are worth setting before
+  // the text starts moving, and auto-playing forces a pause-adjust-resume
+  // dance every single time.
+  function startReading() {
+    words = tokenize(el.text.value);
+    if (!words.length) { el.text.focus(); return; }
+    index = 0;
+    el.setup.hidden = true;
+    el.reader.hidden = false;
+    render();
+  }
+
+  function newText() {
+    pause();
+    el.reader.hidden = true;
+    el.setup.hidden = false;
+    el.text.focus();
+  }
+
+  function updateCount() {
+    var n = tokenize(el.text.value).length;
+    el.count.textContent = n + (n === 1 ? " word" : " words");
+  }
+
+  // --- wiring ---
+
+  document.getElementById("start").addEventListener("click", startReading);
+  document.getElementById("clear").addEventListener("click", function () {
+    el.text.value = ""; updateCount(); el.text.focus();
+  });
+  document.getElementById("restart").addEventListener("click", function () { seek(0); });
+  document.getElementById("back").addEventListener("click", function () { seek(index - SKIP); });
+  document.getElementById("forward").addEventListener("click", function () { seek(index + SKIP); });
+  document.getElementById("newtext").addEventListener("click", newText);
+  document.getElementById("slower").addEventListener("click", function () { setWpm(wpm - WPM_STEP); });
+  document.getElementById("faster").addEventListener("click", function () { setWpm(wpm + WPM_STEP); });
+  document.getElementById("smaller").addEventListener("click", function () { setZoom(zoom - ZOOM_STEP); });
+  document.getElementById("bigger").addEventListener("click", function () { setZoom(zoom + ZOOM_STEP); });
+  el.playpause.addEventListener("click", toggle);
+  el.stage.addEventListener("click", toggle);      // tap the word to pause
+
+  // --- scrubbing ---
+  //
+  // Pointer events cover mouse, touch and trackpad in one path. Capturing
+  // the pointer means the drag keeps tracking after the finger or cursor
+  // slides off the thin bar, which on a phone is immediately.
+  var scrubbing = false;
+  var resumeAfterScrub = false;
+
+  function seekToPointer(e) {
+    var r = el.track.getBoundingClientRect();
+    if (!r.width) return;
+    var ratio = (e.clientX - r.left) / r.width;
+    ratio = Math.max(0, Math.min(1, ratio));
+    seek(Math.round(ratio * (words.length - 1)));
+  }
+
+  el.scrub.addEventListener("pointerdown", function (e) {
+    if (!words.length) return;
+    scrubbing = true;
+    resumeAfterScrub = playing;   // behave like a media scrubber
+    pause();
+    el.scrub.setPointerCapture(e.pointerId);
+    seekToPointer(e);
+    e.preventDefault();
+  });
+
+  el.scrub.addEventListener("pointermove", function (e) {
+    if (scrubbing) seekToPointer(e);
+  });
+
+  function endScrub(e) {
+    if (!scrubbing) return;
+    scrubbing = false;
+    if (el.scrub.hasPointerCapture(e.pointerId)) {
+      el.scrub.releasePointerCapture(e.pointerId);
+    }
+    // Don't resume if they parked it on the last word — play() would read
+    // that as "finished" and restart from the top, which is not what
+    // dragging to the end asks for.
+    if (resumeAfterScrub && index < words.length - 1) play();
+  }
+
+  el.scrub.addEventListener("pointerup", endScrub);
+  el.scrub.addEventListener("pointercancel", endScrub);
+  el.text.addEventListener("input", updateCount);
+
+  document.addEventListener("keydown", function (e) {
+    if (el.reader.hidden) return;
+    switch (e.key) {
+      case " ": e.preventDefault(); toggle(); break;
+      // Shift turns the speed keys into skip keys — the arrows already
+      // mean "adjust", so the modifier only changes what's adjusted.
+      case "ArrowRight":
+        e.preventDefault();
+        e.shiftKey ? seek(index + SKIP) : setWpm(wpm + WPM_STEP);
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        e.shiftKey ? seek(index - SKIP) : setWpm(wpm - WPM_STEP);
+        break;
+      case "-": case "_": e.preventDefault(); setZoom(zoom - ZOOM_STEP); break;
+      case "=": case "+": e.preventDefault(); setZoom(zoom + ZOOM_STEP); break;
+      case "r": case "R": seek(0); break;
+      case "n": case "N": newText(); break;
+      case "Escape":      newText(); break;
+    }
+  });
+
+  setWpm(wpm);
+  setZoom(zoom);
+  updateCount();
+})();
+</script>
+</body>
+</html>
