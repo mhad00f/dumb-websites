@@ -8,14 +8,20 @@
     word from fastest, roughly a third in — and that letter is highlighted
     and pinned to the same column every time. Speed is adjustable in wpm
     and text size from 10% to 200%; the reader opens paused so both can be
-    set before the text moves.
+    set before the text moves. A find box locates any word in the loaded
+    text and jumps to it with a few words of run-up.
     Consumption tool, not speed training: no stats, no progression.
-  USAGE: open this page in any browser.
+  USAGE: served by `bin/rsvp`; open the printed LAN URL in any browser.
     Space = play/pause, arrows = speed, shift+arrows = skip 10 words,
     - and = resize the text, R = restart, N = new text. On a phone, tap the
     word to pause. The progress bar is a scrubber — click or drag it to
     move through the text.
+  EXAMPLE: rsvp          # then browse to http://10.0.0.x:8080
   REQUIRES: nothing — single static file, no build step, no dependencies.
+
+  NOTE: this is the first entry in apps/. Unlike bin/ tools it is not on
+  PATH and does not appear in the `tools` catalog; `bin/rsvp` is what
+  surfaces it there.
 -->
 <html lang="en">
 <head>
@@ -247,6 +253,69 @@
     font-size: 14px;
   }
 
+  /* ---- find ---- */
+
+  .find {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+
+  .find input {
+    flex: 1;
+    min-width: 150px;
+    padding: 11px 12px;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 16px;            /* 16px keeps iOS from zooming on focus */
+    -webkit-appearance: none;
+  }
+
+  .find input:focus { outline: none; border-color: var(--accent); }
+
+  .findstatus { color: var(--dim); font-size: 13px; }
+
+  .results {
+    margin-top: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Overrides the shared button styling — these are list rows, not chrome. */
+  .hit {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--edge);
+    border-radius: 0;
+    padding: 11px 12px;
+    color: var(--dim);
+    font-size: 14px;
+    line-height: 1.55;
+    cursor: pointer;
+    min-width: 0;
+  }
+
+  .hit:last-child { border-bottom: none; }
+  .hit:hover { background: var(--panel); border-color: var(--edge); }
+  .hit:last-child:hover { border-bottom: none; }
+  .hit mark { background: none; color: var(--pivot); font-weight: 700; }
+  .hit .at {
+    color: var(--edge);
+    font-variant-numeric: tabular-nums;
+    margin-right: 10px;
+  }
+
   [hidden] { display: none !important; }
 
   @media (max-width: 560px) {
@@ -308,6 +377,15 @@
         <button id="bigger" title="Bigger text">A+</button>
       </span>
     </div>
+
+    <div class="find">
+      <input id="findinput" type="search" placeholder="Find a word…"
+             autocomplete="off" autocorrect="off" spellcheck="false"
+             aria-label="Find a word in the text">
+      <button id="findbtn">Find</button>
+      <span class="findstatus" id="findstatus"></span>
+    </div>
+    <div class="results" id="results" hidden></div>
   </section>
 
 </main>
@@ -318,6 +396,8 @@
 
   var WPM_MIN = 100, WPM_MAX = 1200, WPM_STEP = 25, SKIP = 10;
   var ZOOM_MIN = 0.1, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
+  var FIND_CONTEXT = 5;    // words of context shown either side of a match
+  var FIND_MAX = 200;      // rows rendered; a common word can match thousands
 
   var words = [];
   var index = 0;
@@ -344,7 +424,10 @@
     position:  document.getElementById("position"),
     playpause: document.getElementById("playpause"),
     wpmout:    document.getElementById("wpmout"),
-    sizeout:   document.getElementById("sizeout")
+    sizeout:   document.getElementById("sizeout"),
+    findinput: document.getElementById("findinput"),
+    findstatus: document.getElementById("findstatus"),
+    results:   document.getElementById("results")
   };
 
   // --- text ---
@@ -543,9 +626,87 @@
 
   function newText() {
     pause();
+    clearFind();          // results index into the old text
     el.reader.hidden = true;
     el.setup.hidden = false;
     el.text.focus();
+  }
+
+  // --- find ---
+
+  // Matches are substring and case-insensitive, so "daryl" finds Daryl,
+  // Daryl's and Daryl, without the reader having to guess at punctuation
+  // or capitalisation.
+  function findWord() {
+    var q = el.findinput.value.trim().toLowerCase();
+    el.results.innerHTML = "";
+    el.results.scrollTop = 0;
+
+    if (!q) {
+      el.findstatus.textContent = "";
+      el.results.hidden = true;
+      return;
+    }
+
+    var hits = [];
+    for (var i = 0; i < words.length; i++) {
+      if (words[i].toLowerCase().indexOf(q) !== -1) hits.push(i);
+    }
+
+    if (!hits.length) {
+      el.findstatus.textContent = "no matches";
+      el.results.hidden = true;
+      return;
+    }
+
+    var shown = hits.slice(0, FIND_MAX);
+    el.findstatus.textContent = hits.length === 1
+      ? "1 match"
+      : hits.length + " matches" +
+        (hits.length > FIND_MAX ? " — first " + FIND_MAX + " shown" : "");
+
+    for (var k = 0; k < shown.length; k++) {
+      el.results.appendChild(hitRow(shown[k]));
+    }
+    el.results.hidden = false;
+  }
+
+  // Built as DOM nodes rather than markup: the words come from whatever
+  // the reader pasted in, and must never be parsed as HTML.
+  function hitRow(i) {
+    var from = Math.max(0, i - FIND_CONTEXT);
+    var to = Math.min(words.length - 1, i + FIND_CONTEXT);
+
+    var row = document.createElement("button");
+    row.className = "hit";
+
+    var at = document.createElement("span");
+    at.className = "at";
+    at.textContent = i + 1;
+    row.appendChild(at);
+
+    for (var k = from; k <= to; k++) {
+      var node = document.createElement(k === i ? "mark" : "span");
+      node.textContent = words[k];
+      row.appendChild(node);
+      if (k < to) row.appendChild(document.createTextNode(" "));
+    }
+
+    // Land on the first word of the context, not the match itself, so the
+    // run-up is read rather than skipped.
+    row.addEventListener("click", function () {
+      pause();
+      seek(from);
+    });
+
+    return row;
+  }
+
+  function clearFind() {
+    el.findinput.value = "";
+    el.findstatus.textContent = "";
+    el.results.innerHTML = "";
+    el.results.hidden = true;
   }
 
   function updateCount() {
@@ -616,8 +777,19 @@
   el.scrub.addEventListener("pointercancel", endScrub);
   el.text.addEventListener("input", updateCount);
 
+  document.getElementById("findbtn").addEventListener("click", findWord);
+  el.findinput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); findWord(); }
+  });
+  el.findinput.addEventListener("search", findWord);   // the input's clear "x"
+
   document.addEventListener("keydown", function (e) {
     if (el.reader.hidden) return;
+    // Typing in the find box must not reach the reader's shortcuts —
+    // otherwise searching for "daryl" restarts on the r and jumps to the
+    // paste view on the n, halfway through the word.
+    var tag = e.target && e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
     switch (e.key) {
       case " ": e.preventDefault(); toggle(); break;
       // Shift turns the speed keys into skip keys — the arrows already
