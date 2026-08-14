@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<!--
+  teleprompter — your script near the lens, advancing only when you say so
+
+  WHAT IT DOES: Paste a script and it shows one beat at a time in large
+    type, with the next beat dimmed underneath so you can see what's
+    coming. Beats are whatever you separated with a blank line, so you
+    control the chunking by how you write it — aim for one thought you can
+    say without looking back, a sentence or two, up to about 25 words. The
+    paste screen reports your average and flags anything over 60. Nothing
+    moves on its own —
+    you advance, which means the script can never outrun you. Tap the
+    right half of the screen (or press the advance key) to move on, the
+    left half to go back. Shows beat position, a progress bar, elapsed
+    time, and an estimated runtime from word count at speaking pace.
+    Delivery aid, not a recorder: nothing is uploaded, stored, or logged.
+  USAGE: served by `bin/teleprompter`; open the printed LAN URL on
+    whatever device sits under your camera.
+    Advance = → ↓ Space PageDown Enter, or tap the right half.
+    Back = ← ↑ PageUp, or tap the left half.
+    Home = restart, Esc = new script, - and = resize the text (20%-250%;
+    the low end goes deliberately small, for reading close).
+  EXAMPLE: teleprompter        # then browse to http://10.0.0.x:8081
+  REQUIRES: nothing — single static file, no build step, no dependencies.
+
+  NOTE: the advance keys are chosen to match Bluetooth page-turner pedals,
+  which present to the browser as HID keyboards sending arrow, space or
+  page keys. Any of them will drive this without configuration.
+
+  NOTE: set the display device's Auto-Lock to Never before recording. The
+  Screen Wake Lock API needs a secure context and this is served over
+  plain http on a LAN address, so the browser cannot hold the screen awake
+  for you. On a dedicated prompter device that setting is the fix.
+
+  NOTE: like apps/rsvp, this is not on PATH and does not appear in the
+  `tools` catalog; `bin/teleprompter` is what surfaces it there. It is
+  standalone from rsvp — shared conventions, no shared code.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>teleprompter</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1c1f25;
+    --ink: #e8e6e3;
+    --dim: #8b9199;
+    --ghost: #7d848d;
+    --accent: #5aa9e6;
+    --warn: #e8a33d;
+    --edge: #2c313a;
+    --zoom: 1;        /* user text-size multiplier, driven by the A−/A+ buttons */
+
+    /* Single source of truth for beat type size, and deliberately NOT
+       viewport-scaled. There is exactly one thing that adapts type size
+       here — fitBeat(), which shrinks a beat until it fits. An additional
+       viewport clamp used to fight with it: resizing changed the font
+       directly, and because the preview is capped in lines rather than
+       words, it lost text at the same time it lost size, so it appeared to
+       shrink faster than the beat above it. Sizing off a fixed base means
+       resizing only rewraps text, which is what a reader expects. Screens
+       too small for this base are handled by fitBeat, and the reader's own
+       A−/A+ is the knob for distance. */
+    --base: 48px;
+    --beat: calc(var(--base) * var(--zoom));
+
+    /* Line length, tied to type size so it holds ~60 characters at every
+       setting. Without it, small text on a wide screen becomes one very
+       long thin line — a horizontal scan, which is the opposite of the
+       fixed point small type is chosen for. Shared by both the beat and
+       the preview so their columns align rather than ending at different
+       widths, and multiplied by --fit so the character count stays put
+       when a beat is shrunk. */
+    --measure: calc(var(--beat) * var(--fit) * 30);
+    --fit: 1;         /* shrink-to-fit factor, set by fitBeat() per beat */
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  [hidden] { display: none !important; }
+
+  /* ---- setup view ---- */
+
+  #setup-view {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  #setup-view main { width: 100%; max-width: 720px; }
+
+  h1 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin: 0 0 14px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 44vh;
+    min-height: 200px;
+    padding: 16px;
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 16px;   /* 16px keeps iOS from zooming on focus */
+    line-height: 1.55;
+    resize: vertical;
+  }
+
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .spacer { flex: 1; }
+
+  .meta { color: var(--dim); font-size: 13px; }
+  .meta strong { color: var(--ink); font-weight: 600; }
+
+  .note {
+    margin-top: 14px;
+    padding: 11px 13px;
+    border: 1px solid var(--edge);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--dim);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .note.warn { border-left-color: var(--warn); }
+
+  button {
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 9px 15px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:hover { border-color: var(--dim); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0e1116;
+    font-weight: 600;
+  }
+
+  button:disabled { opacity: 0.4; cursor: default; }
+  button:disabled:hover { border-color: var(--edge); }
+
+  /* ---- prompter view ---- */
+
+  #prompter-view {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  #bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    color: var(--dim);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    flex: none;
+    z-index: 2;
+  }
+
+  #bar button { padding: 5px 10px; font-size: 13px; }
+
+  /* The stage owns the tap zones, so it must not swallow the top bar.
+     Beats are pinned to the top rather than centred: centring moves the
+     first line to a different height on every advance — short beat low,
+     long beat high — so the eye has to hunt for it each time. Pinning is
+     the same fixed-position argument the reader makes for its pivot
+     column. It also sits the text nearer the top of the device, which is
+     nearer the lens when the thing is propped under a camera. */
+  #stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 4vmin max(4vw, 18px) 0;
+    overflow: hidden;
+  }
+
+  /* No max-height and no scrolling: a beat that overflows is shrunk by
+     fitBeat() until it fits. Truncating the line you are about to say is
+     the worst thing this app could do, and "scroll to see the rest" is not
+     an option when both hands are busy and you are mid-sentence. */
+  #current {
+    font-size: calc(var(--beat) * var(--fit));
+    line-height: 1.34;
+    font-weight: 600;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    max-width: var(--measure);
+    flex: 0 0 auto;
+  }
+
+  /* The next beat is read peripherally — you are looking at the lens, not
+     at it — and peripheral vision has poor acuity, so small and dark is
+     exactly the wrong combination for something meant to be picked up out
+     of the corner of the eye. It is sized as a fixed fraction of the
+     current beat rather than with its own clamp, so the relationship holds
+     at every viewport and at every zoom step instead of drifting apart at
+     the extremes. Big enough to absorb the shape of what's coming; still
+     lighter and smaller than the line being spoken, which is what keeps it
+     from competing. */
+  #next {
+    margin-top: 0.8em;
+    color: var(--ghost);
+    font-size: calc(var(--beat) * 0.68 * var(--fit));
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    max-width: var(--measure);
+    /* Three lines, not a percentage: the look-ahead is a glance at the
+       shape of what's coming, and that's a fixed amount of text rather
+       than a fixed fraction of whatever screen it lands on. The mask fades
+       the third, which reads as "there's more" without inviting you to
+       read it. */
+    max-height: calc(var(--beat) * var(--fit) * 0.68 * 1.4 * 3);
+    overflow: hidden;
+    flex: 0 1 auto;
+    -webkit-mask-image: linear-gradient(#000 72%, transparent);
+    mask-image: linear-gradient(#000 72%, transparent);
+  }
+
+  #end {
+    font-size: calc(clamp(22px, 4vmin + 8px, 44px) * var(--zoom));
+    font-weight: 600;
+    color: var(--dim);
+  }
+
+  #end .time { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* Half-screen targets. You should never have to hit something small
+     while talking, and these sit under the stage text but above nothing
+     else, so the top-bar buttons stay clickable. */
+  .zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    z-index: 1;
+    -webkit-tap-highlight-color: transparent;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 0;
+  }
+
+  .zone:hover { border: 0; }
+  .zone:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+
+  #zone-back { left: 0; }
+  #zone-next { right: 0; }
+
+  #track {
+    flex: none;
+    height: 3px;
+    background: var(--edge);
+  }
+
+  #fill {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width 120ms linear;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="setup-view">
+  <main>
+    <h1>Teleprompter</h1>
+
+    <textarea id="text" placeholder="Paste your script.&#10;&#10;Separate beats with a blank line — each block becomes one screen, and you advance them by hand.&#10;&#10;A beat is one thought you can say without looking back at the screen. Usually a sentence or two."></textarea>
+
+    <div class="row">
+      <span class="meta" id="count">no script yet</span>
+      <span class="spacer"></span>
+      <button id="clear">Clear</button>
+      <button id="start" class="primary" disabled>Start</button>
+    </div>
+
+    <div class="note warn" id="long-warning" hidden></div>
+
+    <div class="note">
+      <strong>Write it in beats.</strong> A beat is one thought you can say
+      without looking back at the screen — usually a sentence or two, up to
+      about <strong id="target-beat">25</strong> words, which is roughly ten
+      seconds of talking. Blank line between them. Short beats keep your
+      eyes up where the lens is; long ones pull you back to the screen and
+      get shrunk to fit. Anything over
+      <strong id="long-threshold">60</strong> words gets flagged before you
+      start.
+    </div>
+
+    <div class="note">
+      Set this device's Auto-Lock to <strong>Never</strong> before you
+      record — the browser can't hold the screen awake over a plain-http
+      LAN address. A Bluetooth page-turner pedal works as-is: they send
+      arrow, space or page keys, which are the advance keys.
+    </div>
+  </main>
+</div>
+
+<div id="prompter-view" hidden>
+  <div id="bar">
+    <span id="position">1 / 1</span>
+    <span id="elapsed">0:00</span>
+    <span id="estimate" class="meta"></span>
+    <span class="spacer"></span>
+    <button id="smaller" title="Smaller text">A−</button>
+    <button id="bigger" title="Larger text">A+</button>
+    <button id="exit" title="Back to the script">Esc</button>
+  </div>
+
+  <div id="stage">
+    <button class="zone" id="zone-back" aria-label="Previous beat"></button>
+    <button class="zone" id="zone-next" aria-label="Next beat"></button>
+    <div id="current"></div>
+    <div id="next"></div>
+    <div id="end" hidden></div>
+  </div>
+
+  <div id="track"><div id="fill"></div></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Speaking runs at roughly half of comfortable reading speed, so this is
+  // deliberately far below the reader's default. It only drives the runtime
+  // estimate; nothing here is actually timed.
+  var SPEAK_WPM = 140;
+
+  // What a comfortable beat costs in breath: at SPEAK_WPM this is about ten
+  // seconds of talking, which is roughly as much as you can take in, look
+  // away, and deliver without checking back. Guidance, not a rule.
+  var TARGET_BEAT = 25;
+
+  // A beat much longer than this stops being glanceable and starts being a
+  // page you read aloud with your head down, which is the thing a prompter
+  // exists to prevent. Set well above TARGET_BEAT on purpose: a warning
+  // that fires on merely suboptimal beats is a warning you learn to ignore.
+  // Warn at authoring time, when splitting is still free.
+  var LONG_BEAT = 60;
+
+  // The bottom of the range is deliberately far below what a prompter
+  // "should" need. Small type in a fixed spot is a focal point you take in
+  // with one fixation instead of a line you scan, which is the same
+  // argument the pinned top edge makes — and how close you sit is not
+  // something this file gets to assume. At the 48px base the range runs
+  // about 10px to 120px.
+  var ZOOM_MIN = 0.2, ZOOM_MAX = 2.5, ZOOM_STEP = 0.1;
+
+  // How far a beat may be shrunk before we stop trying. Past this it is
+  // unreadable at camera distance anyway, and the real fix is a blank line.
+  // Low enough to absorb a phone in landscape, where the whole stage is a
+  // few hundred pixels tall — that case used to be handled by a viewport
+  // clamp on the type size, and is now fitBeat's job alone.
+  var FIT_FLOOR = 0.3;
+
+  var STORE_SCRIPT = "teleprompter.script";
+  var STORE_ZOOM = "teleprompter.zoom";
+
+  var beats = [];
+  var index = 0;
+  var zoom = 1;
+  var startedAt = 0;
+  var ticker = null;
+
+  var el = {
+    setup:    document.getElementById("setup-view"),
+    prompter: document.getElementById("prompter-view"),
+    text:     document.getElementById("text"),
+    count:    document.getElementById("count"),
+    warning:  document.getElementById("long-warning"),
+    stage:    document.getElementById("stage"),
+    current:  document.getElementById("current"),
+    next:     document.getElementById("next"),
+    end:      document.getElementById("end"),
+    position: document.getElementById("position"),
+    elapsed:  document.getElementById("elapsed"),
+    estimate: document.getElementById("estimate"),
+    fill:     document.getElementById("fill"),
+    start:    document.getElementById("start")
+  };
+
+  // --- storage ---
+  //
+  // Wrapped because Safari throws on localStorage in private browsing
+  // rather than returning null, and losing the whole app to a failed
+  // preference read would be a poor trade.
+  function load(key) {
+    try { return window.localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  function save(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+  }
+
+  // --- text ---
+  //
+  // A beat is a blank-line-separated block, which makes the chunking an
+  // authoring decision rather than something this file has to infer.
+  // Sentence-splitting would be a worse default, not a smarter one: a beat
+  // is two or three sentences at least as often as it is one, and no
+  // heuristic knows which. Single newlines are preserved inside a beat, so
+  // a deliberate line break still lands where it was written.
+  function split(text) {
+    return text.split(/\r?\n[ \t]*\r?\n/)
+      .map(function (b) { return b.replace(/[ \t]+$/gm, "").trim(); })
+      .filter(function (b) { return b.length > 0; });
+  }
+
+  function wordCount(text) {
+    var t = text.trim();
+    return t ? t.split(/\s+/).length : 0;
+  }
+
+  function clock(seconds) {
+    var m = Math.floor(seconds / 60);
+    var s = Math.floor(seconds % 60);
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  // --- setup view ---
+
+  function updateCount() {
+    var list = split(el.text.value);
+    var words = wordCount(el.text.value);
+
+    el.start.disabled = list.length === 0;
+
+    if (!list.length) {
+      el.count.textContent = "no script yet";
+      el.warning.hidden = true;
+      return;
+    }
+
+    // The average is the useful number here, not the total: it is directly
+    // comparable to the target in the note above, so a script that drifts
+    // long shows it before the read rather than during.
+    var summary = list.length + (list.length === 1 ? " beat · " : " beats · ") +
+      words + (words === 1 ? " word · " : " words · ");
+    if (list.length > 1) summary += Math.round(words / list.length) + " per beat · ";
+    summary += "about " + clock(words / SPEAK_WPM * 60) + " at speaking pace";
+
+    el.count.innerHTML = "";
+    el.count.appendChild(document.createTextNode(summary));
+
+    var long = [];
+    for (var i = 0; i < list.length; i++) {
+      if (wordCount(list[i]) > LONG_BEAT) long.push(i + 1);
+    }
+
+    if (!long.length) {
+      el.warning.hidden = true;
+    } else {
+      el.warning.textContent =
+        (long.length === 1 ? "Beat " : "Beats ") + long.join(", ") +
+        (long.length === 1 ? " is" : " are") + " over " + LONG_BEAT +
+        " words. Long beats are hard to glance at — add a blank line " +
+        "where you'd naturally pause.";
+      el.warning.hidden = false;
+    }
+  }
+
+  // --- prompter view ---
+
+  // Set as textContent, never markup: the script is whatever was pasted in
+  // and must never be parsed as HTML.
+  function render() {
+    var done = index >= beats.length;
+
+    el.current.hidden = done;
+    el.next.hidden = done;
+    el.end.hidden = !done;
+
+    if (done) {
+      el.end.innerHTML = "";
+      el.end.appendChild(document.createTextNode("End of script — "));
+      var t = document.createElement("span");
+      t.className = "time";
+      t.textContent = clock(elapsedSeconds());
+      el.end.appendChild(t);
+      el.position.textContent = beats.length + " / " + beats.length;
+      el.fill.style.width = "100%";
+      return;
+    }
+
+    el.current.textContent = beats[index];
+    el.next.textContent = index + 1 < beats.length ? beats[index + 1] : "";
+
+    el.position.textContent = (index + 1) + " / " + beats.length;
+    el.fill.style.width = ((index + 1) / beats.length * 100) + "%";
+
+    fitBeat();
+  }
+
+  // The spoken line outranks the preview. If both won't fit, the next beat
+  // is dropped before the current one is touched — losing your look-ahead
+  // costs you a smooth transition, while losing the end of the line you are
+  // saying costs you the take. Only once the preview is already gone does
+  // the current beat shrink, and it shrinks rather than clips because the
+  // usual escape hatch — scroll to see the rest — isn't available to
+  // someone mid-sentence with their hands full.
+  function fitBeat() {
+    var pad = parseFloat(getComputedStyle(el.stage).paddingTop) || 0;
+    var room = el.stage.clientHeight - pad;
+    if (room <= 0) return;
+
+    setFit(1);
+    el.next.hidden = false;
+
+    if (el.current.offsetHeight + nextBlock() <= room) return;
+
+    el.next.hidden = true;
+    if (el.current.offsetHeight <= room) return;
+
+    // Step down until it fits. The floor is a backstop for a beat far past
+    // anything the long-beat warning would have let through quietly.
+    for (var f = 0.96; f >= FIT_FLOOR; f -= 0.04) {
+      setFit(f);
+      if (el.current.offsetHeight <= room) return;
+    }
+  }
+
+  function setFit(f) {
+    document.documentElement.style.setProperty("--fit", String(f));
+  }
+
+  function nextBlock() {
+    if (!el.next.textContent) return 0;
+    return el.next.offsetHeight +
+           (parseFloat(getComputedStyle(el.next).marginTop) || 0);
+  }
+
+  function go(to) {
+    index = Math.max(0, Math.min(beats.length, to));
+    render();
+  }
+
+  function elapsedSeconds() {
+    return startedAt ? (Date.now() - startedAt) / 1000 : 0;
+  }
+
+  function tickElapsed() {
+    el.elapsed.textContent = clock(elapsedSeconds());
+  }
+
+  // The clock starts when the prompter opens rather than on first advance:
+  // you are already talking by the time you reach for the pedal, and a
+  // rehearsal time that omits the first beat is not a rehearsal time.
+  function startClock() {
+    startedAt = Date.now();
+    tickElapsed();
+    if (ticker) clearInterval(ticker);
+    ticker = setInterval(tickElapsed, 500);
+  }
+
+  function stopClock() {
+    if (ticker) { clearInterval(ticker); ticker = null; }
+  }
+
+  // Text size is a multiplier on the responsive clamp rather than a fixed
+  // pixel value, so a size chosen on an iPad still behaves on a phone.
+  function setZoom(next) {
+    zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(next * 10) / 10));
+    document.documentElement.style.setProperty("--zoom", String(zoom));
+    save(STORE_ZOOM, String(zoom));
+    if (!el.prompter.hidden && beats.length) fitBeat();
+  }
+
+  // --- views ---
+
+  function startPrompting() {
+    beats = split(el.text.value);
+    if (!beats.length) return;
+
+    save(STORE_SCRIPT, el.text.value);
+
+    var words = wordCount(el.text.value);
+    el.estimate.textContent = "~" + clock(words / SPEAK_WPM * 60);
+
+    index = 0;
+    el.setup.hidden = true;
+    el.prompter.hidden = false;
+    render();
+    startClock();
+  }
+
+  function exitPrompting() {
+    stopClock();
+    el.prompter.hidden = true;
+    el.setup.hidden = false;
+    el.text.focus();
+  }
+
+  function restart() {
+    go(0);
+    startClock();
+  }
+
+  // --- wiring ---
+
+  el.start.addEventListener("click", startPrompting);
+
+  document.getElementById("clear").addEventListener("click", function () {
+    el.text.value = "";
+    save(STORE_SCRIPT, "");
+    updateCount();
+    el.text.focus();
+  });
+
+  el.text.addEventListener("input", updateCount);
+
+  document.getElementById("zone-next").addEventListener("click", function () { go(index + 1); });
+  document.getElementById("zone-back").addEventListener("click", function () { go(index - 1); });
+  document.getElementById("smaller").addEventListener("click", function () { setZoom(zoom - ZOOM_STEP); });
+  document.getElementById("bigger").addEventListener("click", function () { setZoom(zoom + ZOOM_STEP); });
+  document.getElementById("exit").addEventListener("click", exitPrompting);
+
+  // Pedals present as HID keyboards, and different models send different
+  // keys — arrows, space, or page up/down. Accepting all of them means any
+  // pedal works without a pairing step or a settings screen.
+  document.addEventListener("keydown", function (e) {
+    if (el.prompter.hidden) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    var k = e.key;
+    var forward = k === "ArrowRight" || k === "ArrowDown" || k === " " ||
+                  k === "Spacebar" || k === "PageDown" || k === "Enter";
+    var back = k === "ArrowLeft" || k === "ArrowUp" || k === "PageUp";
+
+    if (forward) { go(index + 1); }
+    else if (back) { go(index - 1); }
+    else if (k === "Home") { restart(); }
+    else if (k === "Escape") { exitPrompting(); }
+    else if (k === "-" || k === "_") { setZoom(zoom - ZOOM_STEP); }
+    else if (k === "=" || k === "+") { setZoom(zoom + ZOOM_STEP); }
+    else { return; }
+
+    e.preventDefault();   // stop Space and PageDown scrolling the page
+  });
+
+  // Rotating the device or resizing the window changes the available room,
+  // so a beat fitted for portrait has to be re-fitted for landscape.
+  window.addEventListener("resize", function () {
+    if (!el.prompter.hidden && beats.length) fitBeat();
+  });
+
+  // --- boot ---
+
+  // Filled from the constants so the advice on screen can never drift away
+  // from the thresholds the code actually enforces.
+  document.getElementById("target-beat").textContent = String(TARGET_BEAT);
+  document.getElementById("long-threshold").textContent = String(LONG_BEAT);
+
+  setZoom(parseFloat(load(STORE_ZOOM)) || 1);
+
+  // Rehearsing means loading the same script repeatedly, so restoring it is
+  // the difference between usable and annoying — unlike the reader, where
+  // you paste a new article each time and persistence is cosmetic.
+  var saved = load(STORE_SCRIPT);
+  if (saved) el.text.value = saved;
+
+  updateCount();
+})();
+</script>
+</body>
+</html>
